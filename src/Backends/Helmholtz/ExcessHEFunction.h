@@ -21,14 +21,27 @@ class DepartureFunction
 {
 public:
     DepartureFunction(){};
+    DepartureFunction(const ResidualHelmholtzGeneralizedExponential &_phi) : phi(_phi) {};
     virtual ~DepartureFunction(){};
     ResidualHelmholtzGeneralizedExponential phi;
     HelmholtzDerivatives derivs;
+    
+    DepartureFunction *copy_ptr(){
+        return new DepartureFunction(phi);
+    }
 
-    void update(double tau, double delta){
+    virtual void update(double tau, double delta){
         derivs.reset(0.0);
         phi.all(tau, delta, derivs);
     };
+    double get(std::size_t itau, std::size_t idelta){
+        return derivs.get(itau, idelta);
+    }
+    
+    // Calculate the derivatives without caching internally
+    void calc_nocache(double tau, double delta, HelmholtzDerivatives &_derivs){
+        phi.all(tau, delta, _derivs);
+    }
 
     double alphar(){ return derivs.alphar;};
     double dalphar_dDelta(){ return derivs.dalphar_ddelta;};
@@ -91,6 +104,49 @@ public:
     };
     ~GERG2008DepartureFunction(){};
 };
+    
+/** \brief A hybrid gaussian with temperature and density dependence along with
+ *
+ * This departure function has a form like
+ * \f[
+ * \alphar^r_{ij} = \sum_k n_{ij,k}\delta^{d_{ij,k}}\tau^{t_{ij,k}}\exp(-\delta^{l_{ij,k}}) + \sum_k n_{ij,k}\delta^{d_{ij,k}}\tau^{t_{ij,k}}\exp[-\eta_{ij,k}(\delta-\varepsilon_{ij,k})^2-\beta_{ij,k}(\tau-\gamma_{ij,k})^2]
+ * \f]
+ * It is symmetric so \f$\alphar^r_{ij} = \alphar^r_{ji}\f$
+ */
+class GaussianExponentialDepartureFunction : public DepartureFunction
+{
+public:
+    GaussianExponentialDepartureFunction(){};
+    GaussianExponentialDepartureFunction(const std::vector<double> &n,const std::vector<double> &d,const std::vector<double> &t,const std::vector<double> &l,
+                              const std::vector<double> &eta,const std::vector<double> &epsilon,
+                              const std::vector<double> &beta,const std::vector<double> &gamma, std::size_t Npower)
+    {
+        /// Break up into power and gaussian terms
+        {
+            std::vector<CoolPropDbl> _n(n.begin(), n.begin()+Npower);
+            std::vector<CoolPropDbl> _d(d.begin(), d.begin()+Npower);
+            std::vector<CoolPropDbl> _t(t.begin(), t.begin()+Npower);
+            std::vector<CoolPropDbl> _l(l.begin(), l.begin()+Npower);
+            phi.add_Power(_n, _d, _t, _l);
+        }
+        if (n.size() == Npower)
+        {
+        }
+        else
+        {
+            std::vector<CoolPropDbl> _n(n.begin()+Npower,                   n.end());
+            std::vector<CoolPropDbl> _d(d.begin()+Npower,                   d.end());
+            std::vector<CoolPropDbl> _t(t.begin()+Npower,                   t.end());
+            std::vector<CoolPropDbl> _eta(eta.begin()+Npower,             eta.end());
+            std::vector<CoolPropDbl> _epsilon(epsilon.begin()+Npower, epsilon.end());
+            std::vector<CoolPropDbl> _beta(beta.begin()+Npower,          beta.end());
+            std::vector<CoolPropDbl> _gamma(gamma.begin()+Npower,       gamma.end());
+            phi.add_Gaussian(_n, _d, _t, _eta, _epsilon, _beta, _gamma);
+        }
+        phi.finish();
+    };
+    ~GaussianExponentialDepartureFunction(){};
+};
 
 /** \brief A polynomial/exponential departure function
  * 
@@ -126,6 +182,33 @@ public:
     STLMatrix F;
 
     ExcessTerm():N(0){};
+    
+    // copy assignment
+    ExcessTerm& operator=(ExcessTerm &other)
+    {
+        for (std::size_t i=0; i < N; ++i){
+            for(std::size_t j=0; j<N; ++j){
+                if (i != j){
+                    *(other.DepartureFunctionMatrix[i][j].get()) = *(other.DepartureFunctionMatrix[i][j].get());
+                }
+            }
+        }
+        return *this;
+    }
+    
+    ExcessTerm copy()
+    {
+        ExcessTerm _term; _term.resize(N);
+        for (std::size_t i=0; i < N; ++i){
+            for(std::size_t j=0; j< N; ++j){
+                if (i != j){
+                    _term.DepartureFunctionMatrix[i][j].reset(DepartureFunctionMatrix[i][j].get()->copy_ptr());
+                }
+            }
+        }
+        _term.F = F;
+        return _term;
+    }
 
     /// Resize the parts of this term
     void resize(std::size_t N){
@@ -155,60 +238,51 @@ public:
 
         // If there is no excess contribution, just stop and return
         if (N == 0){ return derivs; }
-
-        update(tau, delta);
         
-        derivs.alphar = alphar(mole_fractions);
-        derivs.dalphar_ddelta = dalphar_dDelta(mole_fractions);
-        derivs.dalphar_dtau = dalphar_dTau(mole_fractions);
+        if (cache_values == true){
 
-        derivs.d2alphar_ddelta2 = d2alphar_dDelta2(mole_fractions);
-        derivs.d2alphar_ddelta_dtau = d2alphar_dDelta_dTau(mole_fractions);
-        derivs.d2alphar_dtau2 = d2alphar_dTau2(mole_fractions);
+            update(tau, delta);
+            
+            derivs.alphar = alphar(mole_fractions);
+            derivs.dalphar_ddelta = dalphar_dDelta(mole_fractions);
+            derivs.dalphar_dtau = dalphar_dTau(mole_fractions);
 
-        derivs.d3alphar_ddelta3 = d3alphar_dDelta3(mole_fractions);
-        derivs.d3alphar_ddelta2_dtau = d3alphar_dDelta2_dTau(mole_fractions);
-        derivs.d3alphar_ddelta_dtau2 = d3alphar_dDelta_dTau2(mole_fractions);
-        derivs.d3alphar_dtau3 = d3alphar_dTau3(mole_fractions);
+            derivs.d2alphar_ddelta2 = d2alphar_dDelta2(mole_fractions);
+            derivs.d2alphar_ddelta_dtau = d2alphar_dDelta_dTau(mole_fractions);
+            derivs.d2alphar_dtau2 = d2alphar_dTau2(mole_fractions);
 
-        derivs.d4alphar_ddelta4 = d4alphar_dDelta4(mole_fractions);
-        derivs.d4alphar_ddelta3_dtau = d4alphar_dDelta3_dTau(mole_fractions);
-        derivs.d4alphar_ddelta2_dtau2 = d4alphar_dDelta2_dTau2(mole_fractions);
-        derivs.d4alphar_ddelta_dtau3 = d4alphar_dDelta_dTau3(mole_fractions);
-        derivs.d4alphar_dtau4 = d4alphar_dTau4(mole_fractions);
-        return derivs;
-    }
+            derivs.d3alphar_ddelta3 = d3alphar_dDelta3(mole_fractions);
+            derivs.d3alphar_ddelta2_dtau = d3alphar_dDelta2_dTau(mole_fractions);
+            derivs.d3alphar_ddelta_dtau2 = d3alphar_dDelta_dTau2(mole_fractions);
+            derivs.d3alphar_dtau3 = d3alphar_dTau3(mole_fractions);
 
-    double alphar(const std::vector<CoolPropDbl> &x)
-    {
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-        double summer = 0;
-        for (std::size_t i = 0; i < N-1; i++)
-        {
-            for (std::size_t j = i + 1; j < N; j++)
-            {
-                summer += x[i]*x[j]*F[i][j]*DepartureFunctionMatrix[i][j]->alphar();
-            }
+            derivs.d4alphar_ddelta4 = d4alphar_dDelta4(mole_fractions);
+            derivs.d4alphar_ddelta3_dtau = d4alphar_dDelta3_dTau(mole_fractions);
+            derivs.d4alphar_ddelta2_dtau2 = d4alphar_dDelta2_dTau2(mole_fractions);
+            derivs.d4alphar_ddelta_dtau3 = d4alphar_dDelta_dTau3(mole_fractions);
+            derivs.d4alphar_dtau4 = d4alphar_dTau4(mole_fractions);
+            return derivs;
         }
-        return summer;
+        else{
+            return get_deriv_nocomp_notcached(mole_fractions, tau, delta);
+        }
     }
-    double dalphar_dDelta(const std::vector<CoolPropDbl> &x)
-    {
+    HelmholtzDerivatives get_deriv_nocomp_notcached(const std::vector<CoolPropDbl> &x, double tau, double delta) const{
+        HelmholtzDerivatives summer;
         // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-        double summer = 0;
+        if (N==0){ return summer; }
         for (std::size_t i = 0; i < N-1; i++)
         {
             for (std::size_t j = i + 1; j < N; j++)
             {
-                summer += x[i]*x[j]*F[i][j]*DepartureFunctionMatrix[i][j]->dalphar_dDelta();
+                HelmholtzDerivatives term;
+                DepartureFunctionMatrix[i][j]->calc_nocache(tau, delta, term);
+                summer = summer + term*x[i]*x[j]*F[i][j];
             }
         }
         return summer;
     }
-    double d2alphar_dDelta2(const std::vector<CoolPropDbl> &x)
-    {
+    double get_deriv_nocomp_cached(const std::vector<CoolPropDbl> &x, std::size_t itau, std::size_t idelta){
         // If Excess term is not being used, return zero
         if (N==0){ return 0; }
         double summer = 0;
@@ -216,180 +290,28 @@ public:
         {
             for (std::size_t j = i + 1; j < N; j++)
             {
-                summer += x[i]*x[j]*F[i][j]*DepartureFunctionMatrix[i][j]->d2alphar_dDelta2();
-            }
-        }
-        return summer;
-    };
-    double d2alphar_dDelta_dTau(const std::vector<CoolPropDbl> &x)
-    {
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-        double summer = 0;
-        for (std::size_t i = 0; i < N-1; i++)
-        {
-            for (std::size_t j = i + 1; j < N; j++)
-            {
-                summer += x[i]*x[j]*F[i][j]*DepartureFunctionMatrix[i][j]->d2alphar_dDelta_dTau();
+                // Retrieve cached value
+                summer += x[i]*x[j]*F[i][j]*DepartureFunctionMatrix[i][j]->get(itau, idelta);
             }
         }
         return summer;
     }
-    double dalphar_dTau(const std::vector<CoolPropDbl> &x)
-    {
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-        double summer = 0;
-        for (std::size_t i = 0; i < N-1; i++)
-        {
-            for (std::size_t j = i + 1; j < N; j++)
-            {
-                summer += x[i]*x[j]*F[i][j]*DepartureFunctionMatrix[i][j]->dalphar_dTau();
-            }
-        }
-        return summer;
-    };
-    double d2alphar_dTau2(const std::vector<CoolPropDbl> &x)
-    {
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-        double summer = 0;
-        for (std::size_t i = 0; i < N-1; i++)
-        {
-            for (std::size_t j = i + 1; j < N; j++)
-            {
-                summer += x[i]*x[j]*F[i][j]*DepartureFunctionMatrix[i][j]->d2alphar_dTau2();
-            }
-        }
-        return summer;
-    };
-	double d3alphar_dTau3(const std::vector<CoolPropDbl> &x)
-	{
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-		double summer = 0;
-		for (std::size_t i = 0; i < N - 1; i++)
-		{
-			for (std::size_t j = i + 1; j < N; j++)
-			{
-				summer += x[i] * x[j] * F[i][j] * DepartureFunctionMatrix[i][j]->d3alphar_dTau3();
-			}
-		}
-		return summer;
-	};
-	double d3alphar_dDelta_dTau2(const std::vector<CoolPropDbl> &x)
-	{
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-		double summer = 0;
-		for (std::size_t i = 0; i < N - 1; i++)
-		{
-			for (std::size_t j = i + 1; j < N; j++)
-			{
-				summer += x[i] * x[j] * F[i][j] * DepartureFunctionMatrix[i][j]->d3alphar_dDelta_dTau2();
-			}
-		}
-		return summer;
-	};
-	double d3alphar_dDelta2_dTau(const std::vector<CoolPropDbl> &x)
-	{
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-		double summer = 0;
-		for (std::size_t i = 0; i < N - 1; i++)
-		{
-			for (std::size_t j = i + 1; j < N; j++)
-			{
-				summer += x[i] * x[j] * F[i][j] * DepartureFunctionMatrix[i][j]->d3alphar_dDelta2_dTau();
-			}
-		}
-		return summer;
-	};
-	double d3alphar_dDelta3(const std::vector<CoolPropDbl> &x)
-	{
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-		double summer = 0;
-		for (std::size_t i = 0; i < N - 1; i++)
-		{
-			for (std::size_t j = i + 1; j < N; j++)
-			{
-				summer += x[i] * x[j] * F[i][j] * DepartureFunctionMatrix[i][j]->d3alphar_dDelta3();
-			}
-		}
-		return summer;
-	};
-    double d4alphar_dTau4(const std::vector<CoolPropDbl> &x)
-    {
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-        double summer = 0;
-        for (std::size_t i = 0; i < N - 1; i++)
-        {
-            for (std::size_t j = i + 1; j < N; j++)
-            {
-                summer += x[i] * x[j] * F[i][j] * DepartureFunctionMatrix[i][j]->d4alphar_dTau4();
-            }
-        }
-        return summer;
-    };
-    double d4alphar_dDelta_dTau3(const std::vector<CoolPropDbl> &x)
-    {
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-        double summer = 0;
-        for (std::size_t i = 0; i < N - 1; i++)
-        {
-            for (std::size_t j = i + 1; j < N; j++)
-            {
-                summer += x[i] * x[j] * F[i][j] * DepartureFunctionMatrix[i][j]->d4alphar_dDelta_dTau3();
-            }
-        }
-        return summer;
-    };
-    double d4alphar_dDelta2_dTau2(const std::vector<CoolPropDbl> &x)
-    {
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-        double summer = 0;
-        for (std::size_t i = 0; i < N - 1; i++)
-        {
-            for (std::size_t j = i + 1; j < N; j++)
-            {
-                summer += x[i] * x[j] * F[i][j] * DepartureFunctionMatrix[i][j]->d4alphar_dDelta2_dTau2();
-            }
-        }
-        return summer;
-    };
-    double d4alphar_dDelta3_dTau(const std::vector<CoolPropDbl> &x)
-    {
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-        double summer = 0;
-        for (std::size_t i = 0; i < N - 1; i++)
-        {
-            for (std::size_t j = i + 1; j < N; j++)
-            {
-                summer += x[i] * x[j] * F[i][j] * DepartureFunctionMatrix[i][j]->d4alphar_dDelta3_dTau();
-            }
-        }
-        return summer;
-    };
-    double d4alphar_dDelta4(const std::vector<CoolPropDbl> &x)
-    {
-        // If Excess term is not being used, return zero
-        if (N==0){ return 0; }
-        double summer = 0;
-        for (std::size_t i = 0; i < N - 1; i++)
-        {
-            for (std::size_t j = i + 1; j < N; j++)
-            {
-                summer += x[i] * x[j] * F[i][j] * DepartureFunctionMatrix[i][j]->d4alphar_dDelta4();
-            }
-        }
-        return summer;
-    };
-
+    double alphar(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 0, 0); };
+    double dalphar_dDelta(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 0, 1); };
+    double d2alphar_dDelta2(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 0, 2); };
+    double d2alphar_dDelta_dTau(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 1, 1); };
+    double dalphar_dTau(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 1, 0); };
+    double d2alphar_dTau2(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 2, 0); };
+    double d3alphar_dTau3(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 3, 0); };
+	double d3alphar_dDelta_dTau2(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 2, 1); };
+	double d3alphar_dDelta2_dTau(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 1, 2); };
+	double d3alphar_dDelta3(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 0, 3); };
+	double d4alphar_dTau4(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 4, 0); };
+    double d4alphar_dDelta_dTau3(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 3, 1); };
+    double d4alphar_dDelta2_dTau2(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 2, 2); };
+    double d4alphar_dDelta3_dTau(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 1, 3); };
+    double d4alphar_dDelta4(const std::vector<CoolPropDbl> &x) { return get_deriv_nocomp_cached(x, 0, 4); };
+    
     double dalphar_dxi(const std::vector<CoolPropDbl> &x, std::size_t i, x_N_dependency_flag xN_flag)
     {
         // If Excess term is not being used, return zero

@@ -1,9 +1,4 @@
 {
-  "ALIASES": [
-    "argon", 
-    "ARGON", 
-    "R740"
-  ], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -204,18 +199,6 @@
       ]
     }
   }, 
-  "CAS": "7440-37-1", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "A1", 
-    "FH": 0, 
-    "GWP100": 0.0, 
-    "GWP20": 0.0, 
-    "GWP500": 0.0, 
-    "HH": 0, 
-    "Name": "Argon", 
-    "ODP": -1.0, 
-    "PH": 0
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
@@ -250,7 +233,7 @@
           "T_units": "K", 
           "hmolar": -4851.143195734251, 
           "hmolar_units": "J/mol", 
-          "p": 68892.47707775104, 
+          "p": 68892.4770797671, 
           "p_units": "Pa", 
           "rhomolar": 35465.24383230989, 
           "rhomolar_units": "mol/m^3", 
@@ -262,7 +245,7 @@
           "T_units": "K", 
           "hmolar": 1689.054333680143, 
           "hmolar_units": "J/mol", 
-          "p": 68892.77036049489, 
+          "p": 68892.4770797671, 
           "p_units": "Pa", 
           "rhomolar": 101.4989524639359, 
           "rhomolar_units": "mol/m^3", 
@@ -270,7 +253,7 @@
           "smolar_units": "J/mol/K"
         }
       }, 
-      "T_max": 700, 
+      "T_max": 2000, 
       "T_max_units": "K", 
       "Ttriple": 83.806, 
       "Ttriple_units": "K", 
@@ -527,9 +510,34 @@
       "pseudo_pure": false
     }
   ], 
-  "FORMULA": "Ar_{1}", 
-  "NAME": "Argon", 
-  "REFPROP_NAME": "ARGON", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=22407", 
+    "ALIASES": [
+      "argon", 
+      "ARGON", 
+      "R740", 
+      "Ar"
+    ], 
+    "CAS": "7440-37-1", 
+    "CHEMSPIDER_ID": 22407, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "A1", 
+      "FH": 0, 
+      "GWP100": 0.0, 
+      "GWP20": 0.0, 
+      "GWP500": 0.0, 
+      "HH": 0, 
+      "Name": "Argon", 
+      "ODP": -1.0, 
+      "PH": 0
+    }, 
+    "FORMULA": "Ar_{1}", 
+    "INCHI_KEY": "XKRFYHLGVUSROY-UHFFFAOYAW", 
+    "INCHI_STRING": "InChI=1/Ar", 
+    "NAME": "Argon", 
+    "REFPROP_NAME": "ARGON", 
+    "SMILES": "[Ar]"
+  }, 
   "STATES": {
     "critical": {
       "T": 150.687, 
@@ -548,7 +556,7 @@
       "T_units": "K", 
       "hmolar": -4851.143195734251, 
       "hmolar_units": "J/mol", 
-      "p": 68892.47707775104, 
+      "p": 68892.4770797671, 
       "p_units": "Pa", 
       "rhomolar": 35465.24383230989, 
       "rhomolar_units": "mol/m^3", 
@@ -560,7 +568,7 @@
       "T_units": "K", 
       "hmolar": 1689.054333680143, 
       "hmolar_units": "J/mol", 
-      "p": 68892.77036049489, 
+      "p": 68892.4770797671, 
       "p_units": "Pa", 
       "rhomolar": 101.4989524639359, 
       "rhomolar_units": "mol/m^3", 

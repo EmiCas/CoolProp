@@ -1,8 +1,4 @@
 {
-  "ALIASES": [
-    "methanol", 
-    "METHANOL"
-  ], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -209,18 +205,6 @@
       ]
     }
   }, 
-  "CAS": "67-56-1", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "UNKNOWN", 
-    "FH": 3, 
-    "GWP100": 2.8, 
-    "GWP20": -1.0, 
-    "GWP500": -1.0, 
-    "HH": 2, 
-    "Name": "Methanol", 
-    "ODP": -1.0, 
-    "PH": 0
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
@@ -255,7 +239,7 @@
           "T_units": "K", 
           "hmolar": -12414.182578859269, 
           "hmolar_units": "J/mol", 
-          "p": 0.18676344644509799, 
+          "p": 0.18676381241403228, 
           "p_units": "Pa", 
           "rhomolar": 28227.374332847394, 
           "rhomolar_units": "mol/m^3", 
@@ -267,7 +251,7 @@
           "T_units": "K", 
           "hmolar": 29667.78540113105, 
           "hmolar_units": "J/mol", 
-          "p": 0.1867637582184062, 
+          "p": 0.18676381241403228, 
           "p_units": "Pa", 
           "rhomolar": 0.0001279343970924318, 
           "rhomolar_units": "mol/m^3", 
@@ -275,7 +259,7 @@
           "smolar_units": "J/mol/K"
         }
       }, 
-      "T_max": 580, 
+      "T_max": 620, 
       "T_max_units": "K", 
       "Ttriple": 175.61, 
       "Ttriple_units": "K", 
@@ -422,9 +406,32 @@
       "pseudo_pure": false
     }
   ], 
-  "FORMULA": "C_{1}H_{4}O_{1}", 
-  "NAME": "Methanol", 
-  "REFPROP_NAME": "METHANOL", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=864", 
+    "ALIASES": [
+      "methanol", 
+      "METHANOL"
+    ], 
+    "CAS": "67-56-1", 
+    "CHEMSPIDER_ID": 864, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "UNKNOWN", 
+      "FH": 3, 
+      "GWP100": 2.8, 
+      "GWP20": -1.0, 
+      "GWP500": -1.0, 
+      "HH": 2, 
+      "Name": "Methanol", 
+      "ODP": -1.0, 
+      "PH": 0
+    }, 
+    "FORMULA": "C_{1}H_{4}O_{1}", 
+    "INCHI_KEY": "OKKJLVBELUTLKV-UHFFFAOYAX", 
+    "INCHI_STRING": "InChI=1/CH4O/c1-2/h2H,1H3", 
+    "NAME": "Methanol", 
+    "REFPROP_NAME": "METHANOL", 
+    "SMILES": "CO"
+  }, 
   "STATES": {
     "critical": {
       "T": 512.5, 
@@ -443,7 +450,7 @@
       "T_units": "K", 
       "hmolar": -12414.182578859269, 
       "hmolar_units": "J/mol", 
-      "p": 0.18676344644509799, 
+      "p": 0.18676381241403228, 
       "p_units": "Pa", 
       "rhomolar": 28227.374332847394, 
       "rhomolar_units": "mol/m^3", 
@@ -455,7 +462,7 @@
       "T_units": "K", 
       "hmolar": 29667.78540113105, 
       "hmolar_units": "J/mol", 
-      "p": 0.1867637582184062, 
+      "p": 0.18676381241403228, 
       "p_units": "Pa", 
       "rhomolar": 0.0001279343970924318, 
       "rhomolar_units": "mol/m^3", 
@@ -464,6 +471,94 @@
     }
   }, 
   "TRANSPORT": {
+    "conductivity": {
+      "BibTeX": "Sykioti-JPCRD-2013-Methanol", 
+      "critical": {
+        "GAMMA": 0.05283, 
+        "R0": 1.03, 
+        "qD": 1428571428.5714285, 
+        "type": "simplified_Olchowy_Sengers", 
+        "zeta0": 1.487e-10
+      }, 
+      "dilute": {
+        "A": [
+          -0.00357796, 
+          0.0629638, 
+          -0.0373047, 
+          -0.0521182, 
+          0.231607, 
+          0.0441575
+        ], 
+        "B": [
+          3.33313, 
+          -6.08398, 
+          8.18739, 
+          -0.261074, 
+          1
+        ], 
+        "T_reducing": 512.6, 
+        "T_reducing_units": "K", 
+        "m": [
+          0, 
+          1, 
+          2, 
+          3, 
+          4
+        ], 
+        "n": [
+          0, 
+          1, 
+          2, 
+          3, 
+          4, 
+          5
+        ], 
+        "type": "ratio_of_polynomials"
+      }, 
+      "residual": {
+        "B": [
+          0.0556918, 
+          0.0104771, 
+          0.112174, 
+          -0.0745272, 
+          -0.0843893, 
+          0.0637569, 
+          0.0197525, 
+          -0.0246826, 
+          -0.0015253, 
+          0.00434656
+        ], 
+        "T_reducing": 512.6, 
+        "T_reducing_units": "K", 
+        "d": [
+          1, 
+          1, 
+          2, 
+          2, 
+          3, 
+          3, 
+          4, 
+          4, 
+          5, 
+          5
+        ], 
+        "rhomass_reducing": 275.563, 
+        "rhomass_reducing_units": "kg/m^3", 
+        "t": [
+          0, 
+          -1, 
+          0, 
+          -1, 
+          0, 
+          -1, 
+          0, 
+          -1, 
+          0, 
+          -1
+        ], 
+        "type": "polynomial"
+      }
+    }, 
     "viscosity": {
       "BibTeX": "Xiang-JPCRD-2006", 
       "hardcoded": "Methanol"

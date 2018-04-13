@@ -1,6 +1,9 @@
+
 #if defined(_MSC_VER)
 #define _CRTDBG_MAP_ALLOC
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
 #include <crtdbg.h>
 #include <sys/stat.h>
 #else
@@ -29,7 +32,14 @@ IncompressibleBackend::IncompressibleBackend(IncompressibleFluid* fluid) {
     this->set_reference_state();
     if (this->fluid->is_pure()){
     	this->set_fractions(std::vector<CoolPropDbl>(1,1.0));
-    }
+    } else {
+		this->set_fractions(std::vector<CoolPropDbl>(1,0.0));
+	}
+    //} else if (ValidNumber(this->fluid->xmin)) {
+    //	this->set_fractions(std::vector<CoolPropDbl>(1,this->fluid->getxmin()));
+    //} else if (ValidNumber(this->fluid->xmax)) {
+    //	this->set_fractions(std::vector<CoolPropDbl>(1,this->fluid->getxmax()));
+    //}
 }
 
 IncompressibleBackend::IncompressibleBackend(const std::string &fluid_name) {
@@ -37,7 +47,9 @@ IncompressibleBackend::IncompressibleBackend(const std::string &fluid_name) {
     this->set_reference_state();
     if (this->fluid->is_pure()){
     	this->set_fractions(std::vector<CoolPropDbl>(1,1.0));
-    }
+    } else {
+		this->set_fractions(std::vector<CoolPropDbl>(1,0.0));
+	}
 }
 
 IncompressibleBackend::IncompressibleBackend(const std::vector<std::string> &component_names) {
@@ -373,11 +385,10 @@ CoolPropDbl IncompressibleBackend::HmassP_flash(CoolPropDbl hmass, CoolPropDbl p
 
     HmassP_residual res = HmassP_residual(this, p, _fractions[0], hmass-h_ref()+hmass_ref());
 
-    std::string errstring;
     double macheps = DBL_EPSILON;
     double tol     = DBL_EPSILON*1e3;
     int    maxiter = 10;
-    double result = Brent(&res, fluid->getTmin(), fluid->getTmax(), macheps, tol, maxiter, errstring);
+    double result = Brent(&res, fluid->getTmin(), fluid->getTmax(), macheps, tol, maxiter);
     //if (this->do_debug()) std::cout << "Brent solver message: " << errstring << std::endl;
     return result;
 }
@@ -403,11 +414,10 @@ CoolPropDbl IncompressibleBackend::PSmass_flash(CoolPropDbl p, CoolPropDbl smass
 
     PSmass_residual res = PSmass_residual(this, p, _fractions[0], smass-s_ref()+smass_ref());
 
-    std::string errstring;
     double macheps = DBL_EPSILON;
     double tol     = DBL_EPSILON*1e3;
     int    maxiter = 10;
-    double result = Brent(&res, fluid->getTmin(), fluid->getTmax(), macheps, tol, maxiter, errstring);
+    double result = Brent(&res, fluid->getTmin(), fluid->getTmax(), macheps, tol, maxiter);
     //if (this->do_debug()) std::cout << "Brent solver message: " << errstring << std::endl;
     return result;
 }
@@ -537,7 +547,7 @@ double IncompressibleBackend::calc_dhdpatTx (double T, double rho, double drhodT
 
 TEST_CASE("Internal consistency checks and example use cases for the incompressible backend","[IncompressibleBackend]")
 {
-    CoolProp::IncompressibleFluid fluid = CoolPropTesting::incompressibleFluidObject();
+    CoolProp::IncompressibleFluid fluid = CoolProp::get_incompressible_fluid("Methanol");
     CoolProp::IncompressibleBackend backend = CoolProp::IncompressibleBackend(&fluid);
 
     SECTION("Test case for Methanol from SecCool") {

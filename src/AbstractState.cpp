@@ -5,16 +5,18 @@
  *      Author: jowr
  */
 
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
 
 #include <stdlib.h>
 #include "math.h"
 #include "AbstractState.h"
-#include "Backends/REFPROP/REFPROPBackend.h"
-#include "Backends/Helmholtz/HelmholtzEOSBackend.h"
-#include "Backends/Incompressible/IncompressibleBackend.h"
-#include "Backends/Helmholtz/Fluids/FluidLibrary.h"
+#include "DataStructures.h"
 #include "Backends/IF97/IF97Backend.h"
+#include "Backends/Cubics/CubicBackend.h"
+#include "Backends/Cubics/VTPRBackend.h"
+#include "Backends/Incompressible/IncompressibleBackend.h"
 
 #if !defined(NO_TABULAR_BACKENDS)
     #include "Backends/Tabular/TTSEBackend.h"
@@ -23,57 +25,109 @@
 
 namespace CoolProp {
 
+/// This tiny class holds pointers to generators for the backends and can be used to look up
+/// generators at runtime.  This class should be populated through the use of static initialized 
+
+class BackendLibrary{
+private:
+    std::map<backend_families, shared_ptr<AbstractStateGenerator> > backends;
+public:
+    void add_backend(const backend_families &bg, const shared_ptr<AbstractStateGenerator> &asg){
+        backends[bg] = asg;
+    };
+    void get_generator_iterators(const backend_families &bg,
+                                 std::map<backend_families,shared_ptr<AbstractStateGenerator> >::const_iterator &generator,
+                                 std::map<backend_families,shared_ptr<AbstractStateGenerator> >::const_iterator &end){
+        generator = backends.find(bg);
+        end = backends.end();
+    };
+    std::size_t size(){ return backends.size(); };
+};
+inline BackendLibrary & get_backend_library(){
+    static BackendLibrary the_library;
+    return the_library;
+}
+    
+void register_backend(const backend_families &bf, shared_ptr<AbstractStateGenerator> gen){
+    get_backend_library().add_backend(bf, gen);
+};
+
+class IF97BackendGenerator : public AbstractStateGenerator{
+public:
+    AbstractState * get_AbstractState(const std::vector<std::string> &fluid_names){
+        return new IF97Backend();
+    };
+} ;
+// This static initialization will cause the generator to register
+static GeneratorInitializer<IF97BackendGenerator> if97_gen(IF97_BACKEND_FAMILY);
+class SRKGenerator : public AbstractStateGenerator{
+public:
+    AbstractState * get_AbstractState(const std::vector<std::string> &fluid_names){
+        return new SRKBackend(fluid_names, get_config_double(R_U_CODATA));
+    };
+};
+static GeneratorInitializer<SRKGenerator> srk_gen(CoolProp::SRK_BACKEND_FAMILY);
+class PRGenerator : public AbstractStateGenerator{
+public:
+    AbstractState * get_AbstractState(const std::vector<std::string> &fluid_names){
+        return new PengRobinsonBackend(fluid_names, get_config_double(R_U_CODATA));
+    };
+};
+static GeneratorInitializer<PRGenerator> pr_gen(CoolProp::PR_BACKEND_FAMILY);
+class IncompressibleBackendGenerator : public AbstractStateGenerator{
+public:
+    AbstractState * get_AbstractState(const std::vector<std::string> &fluid_names){
+        if (fluid_names.size() != 1){throw ValueError(format("For INCOMP backend, name vector must be one element long"));}
+        return new IncompressibleBackend(fluid_names[0]);
+    };
+};
+// This static initialization will cause the generator to register
+static GeneratorInitializer<IncompressibleBackendGenerator> incomp_gen(INCOMP_BACKEND_FAMILY);
+class VTPRGenerator : public CoolProp::AbstractStateGenerator{
+public:
+    CoolProp::AbstractState * get_AbstractState(const std::vector<std::string> &fluid_names){
+        return new CoolProp::VTPRBackend(fluid_names, CoolProp::get_config_double(R_U_CODATA));
+    };
+} ;
+// This static initialization will cause the generator to register
+static CoolProp::GeneratorInitializer<VTPRGenerator> vtpr_gen(CoolProp::VTPR_BACKEND_FAMILY);
+
+
 AbstractState * AbstractState::factory(const std::string &backend, const std::vector<std::string> &fluid_names)
 {
     if (get_debug_level() > 0){
         std::cout << "AbstractState::factory(" << backend << "," << stringvec_to_string(fluid_names) << ")" << std::endl;
     }
-    static const std::string HEOS_string = "HEOS";
-    if (!backend.compare(HEOS_string))
-    {
-        if (fluid_names.size() == 1){
-            return new HelmholtzEOSBackend(fluid_names[0]);
-        }
-        else{
-            return new HelmholtzEOSMixtureBackend(fluid_names);
-        }
+
+    backend_families f1;
+    std::string f2;
+    extract_backend_families_string(backend, f1, f2);
+    
+    std::map<backend_families,shared_ptr<AbstractStateGenerator> >::const_iterator gen, end;
+    get_backend_library().get_generator_iterators(f1, gen, end);
+
+    if (get_debug_level() > 0){
+        std::cout << "AbstractState::factory backend_library size: " << get_backend_library().size() << std::endl;
     }
-    else if (!backend.compare("REFPROP"))
-    {
-        if (fluid_names.size() == 1){
-            return new REFPROPBackend(fluid_names[0]);
-        }
-        else{
-            return new REFPROPMixtureBackend(fluid_names);
-        }
-    }
-    else if (!backend.compare("INCOMP"))
-    {
-        if (fluid_names.size() != 1){throw ValueError(format("For INCOMP backend, name vector must be one element long"));}
-        return new IncompressibleBackend(fluid_names[0]);
-    }
-    else if (!backend.compare("IF97"))
-    {
-        return new IF97Backend();
+    
+    if (gen != end){
+        // One of the registered backends was able to match the given backend family
+        return gen->second->get_AbstractState(fluid_names);
     }
     #if !defined(NO_TABULAR_BACKENDS)
-    else if (backend.find("TTSE&") == 0)
+    else if (f1==TTSE_BACKEND_FAMILY)
     {
         // Will throw if there is a problem with this backend
-        shared_ptr<AbstractState> AS(factory(backend.substr(5), fluid_names));
+        shared_ptr<AbstractState> AS(factory(f2, fluid_names));
         return new TTSEBackend(AS);
     }
-    else if (backend.find("BICUBIC&") == 0)
+    else if (f1==BICUBIC_BACKEND_FAMILY)
     {
         // Will throw if there is a problem with this backend
-        shared_ptr<AbstractState> AS(factory(backend.substr(8), fluid_names));
+        shared_ptr<AbstractState> AS(factory(f2, fluid_names));
         return new BicubicBackend(AS);
     }
     #endif
-    else if (!backend.compare("TREND"))
-    {
-        throw ValueError("TREND backend not yet implemented");
-    }
     else if (!backend.compare("?") || backend.empty())
     {
         std::size_t idel = fluid_names[0].find("::");
@@ -81,7 +135,7 @@ AbstractState * AbstractState::factory(const std::string &backend, const std::ve
         if (idel == std::string::npos) // No '::' found, no backend specified, try HEOS, otherwise a failure
         {
             // Figure out what backend to use
-            return factory(HEOS_string, fluid_names);
+            return factory("HEOS", fluid_names);
         }
         else
         {
@@ -103,6 +157,8 @@ bool AbstractState::clear() {
     // Reset all instances of CachedElement and overwrite
     // the internal double values with -_HUGE
     this->_R = _HUGE;
+    this->_gas_constant.clear();
+    this->_molar_mass.clear();
 
     /// Ancillary curve values
     this->_rhoLanc.clear();
@@ -131,13 +187,21 @@ bool AbstractState::clear() {
     this->_hmolar.clear();
     this->_smolar.clear();
     this->_gibbsmolar.clear();
+    this->_helmholtzmolar.clear();
     this->_logp.clear();
     this->_logrhomolar.clear();
 
-    ///// Smoothing values
-    //this->rhospline = -_HUGE;
-    //this->dsplinedp = -_HUGE;
-    //this->dsplinedh = -_HUGE;
+    this->_hmolar_excess.clear();
+    this->_smolar_excess.clear();
+    this->_gibbsmolar_excess.clear();
+    this->_volumemolar_excess.clear();
+    this->_umolar_excess.clear();
+    this->_helmholtzmolar_excess.clear();
+
+    /// Smoothing values
+	this->_rho_spline.clear();
+	this->_drho_spline_dh__constp.clear();
+	this->_drho_spline_dp__consth.clear();
 
     /// Cached low-level elements for in-place calculation of other properties
     this->_alpha0.clear();
@@ -165,6 +229,10 @@ bool AbstractState::clear() {
     this->_d2alphar_dDelta2_lim.clear();
     this->_d2alphar_dDelta_dTau_lim.clear();
     this->_d3alphar_dDelta2_dTau_lim.clear();
+
+    /// Two-Phase variables
+    this->_rhoLmolar.clear();
+    this->_rhoVmolar.clear();
 
     /// Transport properties
     this->_viscosity.clear();
@@ -324,6 +392,10 @@ double AbstractState::keyed_output(parameters key)
         return gibbsmolar();
     case iGmass:
         return gibbsmass();
+    case iHelmholtzmolar:
+        return helmholtzmolar();
+    case iHelmholtzmass:
+        return helmholtzmass();
     case iCvmolar:
         return cvmolar();
     case iCvmass:
@@ -344,12 +416,18 @@ double AbstractState::keyed_output(parameters key)
         return get_reducing_state().rhomolar;
     case ispeed_sound:
         return speed_sound();
+    case ialphar:
+        return alphar(); 
     case ialpha0:
         return alpha0();
     case idalpha0_ddelta_consttau:
         return dalpha0_dDelta();
     case idalpha0_dtau_constdelta:
         return dalpha0_dTau();
+    case idalphar_ddelta_consttau:
+        return dalphar_dDelta();
+    case idalphar_dtau_constdelta:
+        return dalphar_dTau();
     case iBvirial:
         return Bvirial();
     case idBvirial_dT:
@@ -376,6 +454,8 @@ double AbstractState::keyed_output(parameters key)
         return compressibility_factor();
     case iPIP:
         return PIP();
+    case ifundamental_derivative_of_gas_dynamics:
+        return fundamental_derivative_of_gas_dynamics();
     default:
         throw ValueError(format("This input [%d: \"%s\"] is not valid for keyed_output",key,get_parameter_information(key,"short").c_str()));
     }
@@ -405,7 +485,10 @@ double AbstractState::T_critical(void){
     return calc_T_critical();
 }
 double AbstractState::T_reducing(void){
-    return calc_T_reducing();
+    if (!ValidNumber(_reducing.T)){
+        calc_reducing_state();
+    }
+    return _reducing.T;
 }
 double AbstractState::p_critical(void){
     return calc_p_critical();
@@ -420,26 +503,57 @@ double AbstractState::rhomass_critical(void){
     return calc_rhomolar_critical()*molar_mass();
 }
 double AbstractState::rhomolar_reducing(void){
-    return calc_rhomolar_reducing();
+    if (!ValidNumber(_reducing.rhomolar)){
+        calc_reducing_state();
+    }
+    return _reducing.rhomolar;
 }
 double AbstractState::rhomass_reducing(void){
-    return calc_rhomolar_reducing()*molar_mass();
+    return rhomolar_reducing()*molar_mass();
 }
 double AbstractState::hmolar(void){
     if (!_hmolar) _hmolar = calc_hmolar();
     return _hmolar;
 }
+double AbstractState::hmolar_excess(void) {
+    if (!_hmolar_excess) calc_excess_properties();
+    return _hmolar_excess;
+}
 double AbstractState::smolar(void){
     if (!_smolar) _smolar = calc_smolar();
     return _smolar;
+}
+double AbstractState::smolar_excess(void) {
+    if (!_smolar_excess) calc_excess_properties();
+    return _smolar_excess;
 }
 double AbstractState::umolar(void){
     if (!_umolar) _umolar = calc_umolar();
     return _umolar;
 }
+double AbstractState::umolar_excess(void) {
+    if (!_umolar_excess) calc_excess_properties();
+    return _umolar_excess;
+}
 double AbstractState::gibbsmolar(void){
     if (!_gibbsmolar) _gibbsmolar = calc_gibbsmolar();
     return _gibbsmolar;
+}
+double AbstractState::gibbsmolar_excess(void) {
+    if (!_gibbsmolar_excess) calc_excess_properties();
+    return _gibbsmolar_excess;
+}
+double AbstractState::helmholtzmolar(void){
+    if (!_helmholtzmolar) _helmholtzmolar = calc_helmholtzmolar();
+    return _helmholtzmolar;
+}
+double AbstractState::helmholtzmolar_excess(void) {
+    if (!_helmholtzmolar_excess) calc_excess_properties();
+    return _helmholtzmolar_excess;
+}
+double AbstractState::volumemolar_excess(void) {
+    if (!_volumemolar_excess) calc_excess_properties();
+    return _volumemolar_excess;
 }
 double AbstractState::cpmolar(void){
     if (!_cpmolar) _cpmolar = calc_cpmolar();
@@ -493,6 +607,10 @@ double AbstractState::fugacity(std::size_t i){
     // TODO: Cache the fug. coeff for each component
     return calc_fugacity(i);
 }
+double AbstractState::chemical_potential(std::size_t i) {
+    // TODO: Cache the chemical potential for each component
+    return calc_chemical_potential(i);
+}
 void AbstractState::build_phase_envelope(const std::string &type)
 {
     calc_phase_envelope(type);
@@ -508,6 +626,12 @@ double AbstractState::Cvirial(void){ return calc_Cvirial(); }
 double AbstractState::dBvirial_dT(void){ return calc_dBvirial_dT(); }
 double AbstractState::dCvirial_dT(void){ return calc_dCvirial_dT(); }
 double AbstractState::compressibility_factor(void){ return calc_compressibility_factor(); }
+    
+double AbstractState::fundamental_derivative_of_gas_dynamics()
+{
+    // See Colonna, FPE, 2010, Eq. 1
+    return 1 + this->second_partial_deriv(iP, iDmass, iSmolar, iDmass, iSmolar)*this->rhomass()/(2*powInt(speed_sound(), 2));
+};
 
 // Get the derivatives of the parameters in the partial derivative with respect to T and rho
 void get_dT_drho(AbstractState &AS, parameters index, CoolPropDbl &dT, CoolPropDbl &drho)
@@ -599,6 +723,53 @@ void get_dT_drho(AbstractState &AS, parameters index, CoolPropDbl &dT, CoolPropD
         dT = 1/dT_dtau; drho = 0; break;
     case iDelta:
         dT = 0; drho = 1/rhor; break;
+    case iCvmolar:
+    case iCvmass:
+    {
+        // use the second order derivative of internal energy
+        // make it cleaner by using the function get_dT_drho_second_derivatives directly?
+        // dcvdT|rho = d2u/dT2|rho
+        dT = R/T*pow(tau, 2)*(tau*(AS.d3alpha0_dTau3()+AS.d3alphar_dTau3())+2*(AS.d2alpha0_dTau2()+AS.d2alphar_dTau2()));
+        // dcvdrho|T = d2u/dT/drho
+        drho = R/rho*(-pow(tau,2)*delta*AS.d3alphar_dDelta_dTau2());
+        if (index == iCvmass){
+            drho /= AS.molar_mass();
+            dT /= AS.molar_mass();
+        }
+        break;
+    }
+    case iCpmolar:
+    case iCpmass:
+    {
+        // dcp/dT|rho = d2h/dT2 + dh/drho * dP/dT * d2P/drhodT / ( dp/drho )^2 - ( d2h/dTdrho * dP/dT + dh/drho * d2P/dT2 ) / ( dP/drho )
+        dT = R/T*pow(tau, 2)*(tau*(AS.d3alpha0_dTau3()+AS.d3alphar_dTau3()) + 2*(AS.d2alpha0_dTau2()+AS.d2alphar_dTau2()) + delta*AS.d3alphar_dDelta_dTau2());
+        dT += (T*R/rho*(tau*delta*AS.d2alphar_dDelta_dTau()+delta*AS.dalphar_dDelta()+pow(delta,2)*AS.d2alphar_dDelta2())) * (rho*R*(1+delta*AS.dalphar_dDelta() - tau*delta*AS.d2alphar_dDelta_dTau())) * (R*(1+2*delta*AS.dalphar_dDelta() +pow(delta,2)*AS.d2alphar_dDelta2() - 2*delta*tau*AS.d2alphar_dDelta_dTau() - tau*pow(delta, 2)*AS.d3alphar_dDelta2_dTau())) / pow(R*T*(1+2*delta*AS.dalphar_dDelta()+pow(delta, 2)*AS.d2alphar_dDelta2()), 2);
+        dT -= ((R/rho*delta*(delta*AS.d2alphar_dDelta2() - pow(tau,2)*AS.d3alphar_dDelta_dTau2() + AS.dalphar_dDelta() - tau*delta*AS.d3alphar_dDelta2_dTau() - tau*AS.d2alphar_dDelta_dTau())) * (rho*R*(1+delta*AS.dalphar_dDelta() - tau*delta*AS.d2alphar_dDelta_dTau())) + (T*R/rho*(tau*delta*AS.d2alphar_dDelta_dTau()+delta*AS.dalphar_dDelta()+pow(delta,2)*AS.d2alphar_dDelta2())) * (rho*R/T*(pow(tau,2)*delta*AS.d3alphar_dDelta_dTau2()))) / (R*T*(1+2*delta*AS.dalphar_dDelta()+pow(delta, 2)*AS.d2alphar_dDelta2()));
+        // dcpdrho|T = d2h/dTdrho + dh/drho * dP/dT * d2P/drho2 / ( dp/drho )^2 - ( d2h/drho2 * dP/dT + dh/drho * d2P/dTdrho ) / ( dP/drho )
+        drho = R/rho*delta*(delta*AS.d2alphar_dDelta2() - pow(tau,2)*AS.d3alphar_dDelta_dTau2() + AS.dalphar_dDelta() - tau*delta*AS.d3alphar_dDelta2_dTau() - tau*AS.d2alphar_dDelta_dTau()); //d2h/dTdrho
+        drho += (T*R/rho*(tau*delta*AS.d2alphar_dDelta_dTau()+delta*AS.dalphar_dDelta()+pow(delta,2)*AS.d2alphar_dDelta2())) * (rho*R*(1+delta*AS.dalphar_dDelta() - tau*delta*AS.d2alphar_dDelta_dTau())) * (T*R/rho*(2*delta*AS.dalphar_dDelta()+4*pow(delta,2)*AS.d2alphar_dDelta2()+pow(delta,3)*AS.d3alphar_dDelta3())) / pow(R*T*(1+2*delta*AS.dalphar_dDelta()+pow(delta, 2)*AS.d2alphar_dDelta2()), 2);
+        drho -= ((R*T*pow(delta/rho,2)*(tau*AS.d3alphar_dDelta2_dTau() + 2*AS.d2alphar_dDelta2() + delta*AS.d3alphar_dDelta3())) * (rho*R*(1+delta*AS.dalphar_dDelta() - tau*delta*AS.d2alphar_dDelta_dTau())) + (T*R/rho*(tau*delta*AS.d2alphar_dDelta_dTau()+delta*AS.dalphar_dDelta()+pow(delta,2)*AS.d2alphar_dDelta2())) * (R*(1+2*delta*AS.dalphar_dDelta() +pow(delta,2)*AS.d2alphar_dDelta2() - 2*delta*tau*AS.d2alphar_dDelta_dTau() - tau*pow(delta, 2)*AS.d3alphar_dDelta2_dTau()))) / (R*T*(1+2*delta*AS.dalphar_dDelta()+pow(delta, 2)*AS.d2alphar_dDelta2()));
+        if (index == iCpmass){
+            drho /= AS.molar_mass();
+            dT /= AS.molar_mass();
+        }
+        break;
+    }
+    case ispeed_sound:
+    {
+        //dwdT
+        double aa = 1.0+delta*AS.dalphar_dDelta()-delta*tau*AS.d2alphar_dDelta_dTau();
+        double bb = pow(tau, 2)*(AS.d2alpha0_dTau2()+AS.d2alphar_dTau2());
+        double daa_dTau = -delta*tau*AS.d3alphar_dDelta_dTau2();
+        double dbb_dTau = pow(tau, 2)*(AS.d3alpha0_dTau3()+AS.d3alphar_dTau3())+2.0*tau*(AS.d2alpha0_dTau2()+AS.d2alphar_dTau2());
+        double w = AS.speed_sound();
+        dT = 1.0/2.0/w/T*(pow(w, 2)-R*Tr/AS.molar_mass()*(2.0*delta*AS.d2alphar_dDelta_dTau()+pow(delta, 2)*AS.d3alphar_dDelta2_dTau()-(2*aa/bb*daa_dTau-pow(aa/bb, 2)*dbb_dTau)));
+        //dwdrho
+        double daa_dDelta = AS.dalphar_dDelta()+delta*AS.d2alphar_dDelta2()-tau*(AS.d2alphar_dDelta_dTau()+delta*AS.d3alphar_dDelta2_dTau());
+        double dbb_dDelta = pow(tau, 2)*(AS.d3alpha0_dDelta_dTau2()+AS.d3alphar_dDelta_dTau2());
+        drho = R*T/2.0/AS.molar_mass()/w/rhor*(2.0*(AS.dalphar_dDelta()+delta*AS.d2alphar_dDelta2())+(2.0*delta*AS.d2alphar_dDelta2()+pow(delta, 2)*AS.d3alphar_dDelta3())-(2*aa/bb*daa_dDelta-pow(aa/bb, 2)*dbb_dDelta));
+        break;
+    }
     default:
         throw ValueError(format("input to get_dT_drho[%s] is invalid",get_parameter_information(index,"short").c_str()));
     }
@@ -822,6 +993,19 @@ TEST_CASE("Check derivatives in first_partial_deriv","[derivs_in_first_partial_d
     CoolPropDbl dGmass_dT_num = (WaterplusT->gibbsmass() - WaterminusT->gibbsmass())/(2*dT);
     CoolPropDbl dGmass_drho_num = (Waterplusrho->gibbsmass() - Waterminusrho->gibbsmass())/(2*drho);
 
+    CoolPropDbl dCvmolar_dT_num = (WaterplusT->cvmolar() - WaterminusT->cvmolar())/(2*dT);
+    CoolPropDbl dCvmolar_drho_num = (Waterplusrho->cvmolar() - Waterminusrho->cvmolar())/(2*drho);
+    CoolPropDbl dCvmass_dT_num = (WaterplusT->cvmass() - WaterminusT->cvmass())/(2*dT);
+    CoolPropDbl dCvmass_drho_num = (Waterplusrho->cvmass() - Waterminusrho->cvmass())/(2*drho);
+
+    CoolPropDbl dCpmolar_dT_num = (WaterplusT->cpmolar() - WaterminusT->cpmolar())/(2*dT);
+    CoolPropDbl dCpmolar_drho_num = (Waterplusrho->cpmolar() - Waterminusrho->cpmolar())/(2*drho);
+    CoolPropDbl dCpmass_dT_num = (WaterplusT->cpmass() - WaterminusT->cpmass())/(2*dT);
+    CoolPropDbl dCpmass_drho_num = (Waterplusrho->cpmass() - Waterminusrho->cpmass())/(2*drho);
+
+    CoolPropDbl dspeed_sound_dT_num = (WaterplusT->speed_sound() - WaterminusT->speed_sound())/(2*dT);
+    CoolPropDbl dspeed_sound_drho_num = (Waterplusrho->speed_sound() - Waterminusrho->speed_sound())/(2*drho);
+
     // Pressure
     CoolPropDbl dP_dT_analyt, dP_drho_analyt;
     CoolProp::get_dT_drho(*Water, CoolProp::iP, dP_dT_analyt, dP_drho_analyt);
@@ -845,6 +1029,19 @@ TEST_CASE("Check derivatives in first_partial_deriv","[derivs_in_first_partial_d
     CoolProp::get_dT_drho(*Water, CoolProp::iGmolar, dGmolar_dT_analyt, dGmolar_drho_analyt);
     CoolPropDbl dGmass_dT_analyt, dGmass_drho_analyt;
     CoolProp::get_dT_drho(*Water, CoolProp::iGmass, dGmass_dT_analyt, dGmass_drho_analyt);
+    // Isochoric heat capacity
+    CoolPropDbl dCvmolar_dT_analyt, dCvmolar_drho_analyt;
+    CoolProp::get_dT_drho(*Water, CoolProp::iCvmolar, dCvmolar_dT_analyt, dCvmolar_drho_analyt);
+    CoolPropDbl dCvmass_dT_analyt, dCvmass_drho_analyt;
+    CoolProp::get_dT_drho(*Water, CoolProp::iCvmass, dCvmass_dT_analyt, dCvmass_drho_analyt);
+    // Isobaric heat capacity
+    CoolPropDbl dCpmolar_dT_analyt, dCpmolar_drho_analyt;
+    CoolProp::get_dT_drho(*Water, CoolProp::iCpmolar, dCpmolar_dT_analyt, dCpmolar_drho_analyt);
+    CoolPropDbl dCpmass_dT_analyt, dCpmass_drho_analyt;
+    CoolProp::get_dT_drho(*Water, CoolProp::iCpmass, dCpmass_dT_analyt, dCpmass_drho_analyt);
+    // Speed of sound
+    CoolPropDbl dspeed_sound_dT_analyt, dspeed_sound_drho_analyt;
+    CoolProp::get_dT_drho(*Water, CoolProp::ispeed_sound, dspeed_sound_dT_analyt, dspeed_sound_drho_analyt);
 
     double eps = 1e-3;
 
@@ -871,50 +1068,18 @@ TEST_CASE("Check derivatives in first_partial_deriv","[derivs_in_first_partial_d
     CHECK( std::abs(dGmass_dT_analyt/dGmass_dT_num-1) < eps);
     CHECK( std::abs(dGmass_drho_analyt/dGmass_drho_num-1) < eps);
 
-}
+    CHECK( std::abs(dCvmolar_dT_analyt/dCvmolar_dT_num-1) < eps);
+    CHECK( std::abs(dCvmolar_drho_analyt/dCvmolar_drho_num-1) < eps);
+    CHECK( std::abs(dCvmass_dT_analyt/dCvmass_dT_num-1) < eps);
+    CHECK( std::abs(dCvmass_drho_analyt/dCvmass_drho_num-1) < eps);
 
-#endif
+    CHECK( std::abs(dCpmolar_dT_analyt/dCpmolar_dT_num-1) < eps);
+    CHECK( std::abs(dCpmolar_drho_analyt/dCpmolar_drho_num-1) < eps);
+    CHECK( std::abs(dCpmass_dT_analyt/dCpmass_dT_num-1) < eps);
+    CHECK( std::abs(dCpmass_drho_analyt/dCpmass_drho_num-1) < eps);
 
-
-/// *********************************************************************************
-/// *********************************************************************************
-///                     EMSCRIPTEN (for javascript)
-/// *********************************************************************************
-/// *********************************************************************************
-
-#ifdef EMSCRIPTEN
-
-#include <emscripten/bind.h>
-using namespace emscripten;
-
-CoolProp::AbstractState * factory(const std::string &backend, const std::string &fluid_names)
-{
-    return CoolProp::AbstractState::factory(backend, strsplit(fluid_names, '&'));
-}
-
-// Binding code
-EMSCRIPTEN_BINDINGS(abstract_state_bindings) {
-
-    register_vector<double>("VectorDouble");
-    register_vector<std::string>("VectorString");
-
-    //value_object<CoolProp::PhaseEnvelopeData>("CoolProp::PhaseEnvelopeData")
-    //    // Use X macros to auto-generate the variables; 
-    //    // each will look something like: .field("T", &CoolProp::PhaseEnvelopeData::T);
-    //    #define X(name) .field("name", &CoolProp::PhaseEnvelopeData::name)
-    //        PHASE_ENVELOPE_VECTORS
-    //    #undef X
-    //    ;
-
-    function("factory", &factory, allow_raw_pointers());
-
-    class_<CoolProp::AbstractState>("AbstractState")
-        .function("gas_constant", &CoolProp::AbstractState::gas_constant)
-        .function("update", &CoolProp::AbstractState::update)
-        .function("set_mole_fractions", &CoolProp::AbstractState::set_mole_fractions_double)
-        .function("build_phase_envelope", &CoolProp::AbstractState::build_phase_envelope)
-        .function("get_phase_envelope_data", &CoolProp::AbstractState::get_phase_envelope_data);
-
+    CHECK( std::abs(dspeed_sound_dT_analyt/dspeed_sound_dT_num-1) < eps);
+    CHECK( std::abs(dspeed_sound_drho_analyt/dspeed_sound_drho_num-1) < eps);
 }
 
 #endif

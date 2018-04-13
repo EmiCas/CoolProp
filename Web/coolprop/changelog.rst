@@ -1,6 +1,282 @@
 Changelog for CoolProp
 ======================
 
+6.1.0
+-----
+
+New features:
+
+* Windows installer for Microsoft Excel
+* Added VTPR backend
+* Twu and Mathias-Copeman attractive parameters can be set for PR and SRK
+* Major improvements to Excel wrapper
+* Added EOS for MDM of M. Thol
+* Implemented first version of PT flash calculations for two-phase states
+* Implemented PT flash for mixtures (not finished)
+* Added a pybind11 module for CoolProp
+* ... and a lot of little bugfixes (see issues)
+
+Contributors to this release:
+ibell, JonWel, jowr, babaksamareh, mikekaganski
+
+* `#1290 <https://github.com/CoolProp/CoolProp/issues/1290>`_ : Catch runs should be Release builds
+* `#1288 <https://github.com/CoolProp/CoolProp/issues/1288>`_ : Actually check if T < Tmelt for p > pmin
+* `#1287 <https://github.com/CoolProp/CoolProp/issues/1287>`_ : Actually commit new pybind11 submodule
+* `#1286 <https://github.com/CoolProp/CoolProp/issues/1286>`_ : in phase envelope construction, potential crash
+* `#1284 <https://github.com/CoolProp/CoolProp/issues/1284>`_ : Make low-level interface accessible through high-level interface in FORTRAN
+* `#1283 <https://github.com/CoolProp/CoolProp/issues/1283>`_ : Add pure fluid check to VTPR
+* `#1282 <https://github.com/CoolProp/CoolProp/issues/1282>`_ : Correct typo, see #1270
+* `#1281 <https://github.com/CoolProp/CoolProp/issues/1281>`_ : Add ability to add HEOS fluids as JSON at runtime
+* `#1272 <https://github.com/CoolProp/CoolProp/issues/1272>`_ : Solves a bug in VTPR
+* `#1271 <https://github.com/CoolProp/CoolProp/issues/1271>`_ : Remove possible division by 0, closes #1270
+* `#1269 <https://github.com/CoolProp/CoolProp/issues/1269>`_ : SatL and SatV of type VTPR too
+* `#1268 <https://github.com/CoolProp/CoolProp/issues/1268>`_ : Implement fluid_names for cubic backend
+* `#1267 <https://github.com/CoolProp/CoolProp/issues/1267>`_ : PengRobinson doesn't pass alpha to SatL and SatV
+* `#1266 <https://github.com/CoolProp/CoolProp/issues/1266>`_ : Small fixes for VTPR
+* `#1264 <https://github.com/CoolProp/CoolProp/issues/1264>`_ : Update initialization for VTPR
+* `#1262 <https://github.com/CoolProp/CoolProp/issues/1262>`_ : Set alpha function in JSON
+* `#1261 <https://github.com/CoolProp/CoolProp/issues/1261>`_ : Update CMakeLists.txt
+* `#1259 <https://github.com/CoolProp/CoolProp/issues/1259>`_ : Methanol-water mixture: strange results
+* `#1258 <https://github.com/CoolProp/CoolProp/issues/1258>`_ : Solves a bug with cubic and mixtures
+* `#1257 <https://github.com/CoolProp/CoolProp/issues/1257>`_ : Update iPhone compilation docs
+* `#1255 <https://github.com/CoolProp/CoolProp/issues/1255>`_ : Allow ability to set Twu parameters for cubic EOS (from JSON)
+* `#1252 <https://github.com/CoolProp/CoolProp/issues/1252>`_ : Implement set_double_array2D
+* `#1250 <https://github.com/CoolProp/CoolProp/issues/1250>`_ : Implement coefficient derivatives of dYr_dxi in reducing function
+* `#1248 <https://github.com/CoolProp/CoolProp/issues/1248>`_ : Problem with OSX compilation
+* `#1240 <https://github.com/CoolProp/CoolProp/issues/1240>`_ : Make psi_plus public
+* `#1239 <https://github.com/CoolProp/CoolProp/issues/1239>`_ : Shortcut VTPR when pure fluids, solves #1232
+* `#1237 <https://github.com/CoolProp/CoolProp/issues/1237>`_ : Create an installer for selected Windows wrappers
+* `#1235 <https://github.com/CoolProp/CoolProp/issues/1235>`_ : Excel 2016 Add-In Updates
+* `#1234 <https://github.com/CoolProp/CoolProp/issues/1234>`_ : Add the ability to set limits in Consistency plots
+* `#1232 <https://github.com/CoolProp/CoolProp/issues/1232>`_ : VTPR components with one group
+* `#1230 <https://github.com/CoolProp/CoolProp/issues/1230>`_ : Allow ability to call REFPROP on OSX
+* `#1229 <https://github.com/CoolProp/CoolProp/issues/1229>`_ : ConsistencyPlots updates
+* `#1227 <https://github.com/CoolProp/CoolProp/issues/1227>`_ : Make all functions in DepartureFunction overrridable
+* `#1226 <https://github.com/CoolProp/CoolProp/issues/1226>`_ : More critical point questions
+* `#1222 <https://github.com/CoolProp/CoolProp/issues/1222>`_ : Critical point calc failure
+* `#1221 <https://github.com/CoolProp/CoolProp/issues/1221>`_ : Take more steps in stability evaluator (at least 100)
+* `#1220 <https://github.com/CoolProp/CoolProp/issues/1220>`_ : Add adaptive integrator code
+* `#1219 <https://github.com/CoolProp/CoolProp/issues/1219>`_ : Double post_update in update_TP_guessrho
+* `#1217 <https://github.com/CoolProp/CoolProp/issues/1217>`_ : Peng-Robinson issue with Hydrogen
+* `#1215 <https://github.com/CoolProp/CoolProp/issues/1215>`_ : Vapour QT_INPUT with VTPR
+* `#1214 <https://github.com/CoolProp/CoolProp/issues/1214>`_ : Refactor exceptions in CoolPropLib.cpp close #1200
+* `#1213 <https://github.com/CoolProp/CoolProp/issues/1213>`_ : Add tests for Poling example with UNIFAC code
+* `#1212 <https://github.com/CoolProp/CoolProp/issues/1212>`_ : Add derivatives of a*rho with respect to tau,delta,x
+* `#1211 <https://github.com/CoolProp/CoolProp/issues/1211>`_ : Use aii_term and b0_ii from cubic
+* `#1209 <https://github.com/CoolProp/CoolProp/issues/1209>`_ : Correct tau derivatives in VTPR
+* `#1208 <https://github.com/CoolProp/CoolProp/issues/1208>`_ : Correct derivatives of am and test for VTPR
+* `#1206 <https://github.com/CoolProp/CoolProp/issues/1206>`_ : Segmentation fault when calling get_mass_fractions() with SRK and PR
+* `#1204 <https://github.com/CoolProp/CoolProp/issues/1204>`_ : Make all functions in reducing function const
+* `#1203 <https://github.com/CoolProp/CoolProp/issues/1203>`_ : Allow VTPR to pass only names by setting default R_u value
+* `#1202 <https://github.com/CoolProp/CoolProp/issues/1202>`_ : Better error message when UNIFAC component cannot be found
+* `#1201 <https://github.com/CoolProp/CoolProp/issues/1201>`_ : Update MixtureDerivatives.cpp
+* `#1199 <https://github.com/CoolProp/CoolProp/issues/1199>`_ : dalpha0_dxi is wrong
+* `#1198 <https://github.com/CoolProp/CoolProp/issues/1198>`_ : Cubic CP
+* `#1197 <https://github.com/CoolProp/CoolProp/issues/1197>`_ : Cubic QT_INPUTS
+* `#1196 <https://github.com/CoolProp/CoolProp/issues/1196>`_ : Update CoolPropLib.def
+* `#1195 <https://github.com/CoolProp/CoolProp/issues/1195>`_ : Merge VTPR
+* `#1193 <https://github.com/CoolProp/CoolProp/issues/1193>`_ : REFPROP backend is missing acentric factor accessor
+* `#1192 <https://github.com/CoolProp/CoolProp/issues/1192>`_ : Missing formulas for some HFO
+* `#1191 <https://github.com/CoolProp/CoolProp/issues/1191>`_ : Linked states need to be updated in copy_k
+* `#1190 <https://github.com/CoolProp/CoolProp/issues/1190>`_ : Problems running the VB.NET and C# wrappers
+* `#1189 <https://github.com/CoolProp/CoolProp/issues/1189>`_ : Cubic backend broken for PQ calls
+* `#1188 <https://github.com/CoolProp/CoolProp/issues/1188>`_ : Critical state not copying for cubics
+* `#1187 <https://github.com/CoolProp/CoolProp/issues/1187>`_ : All critical points destroy density solver
+* `#1185 <https://github.com/CoolProp/CoolProp/issues/1185>`_ : Add 4th order solver (Halley+)
+* `#1184 <https://github.com/CoolProp/CoolProp/issues/1184>`_ : Add 4th order alphar derivatives to python
+* `#1183 <https://github.com/CoolProp/CoolProp/issues/1183>`_ : QT/PQ inputs needs to polish with Newton-Raphson
+* `#1182 <https://github.com/CoolProp/CoolProp/issues/1182>`_ : Add function to generate rapidjson instance from JSON string
+* `#1181 <https://github.com/CoolProp/CoolProp/issues/1181>`_ : Add warning about T > Tmax for HS inputs
+* `#1180 <https://github.com/CoolProp/CoolProp/issues/1180>`_ : CoolProp add-in for Excel not working on re-opened files
+* `#1179 <https://github.com/CoolProp/CoolProp/issues/1179>`_ : Add derivatives of vr and Tr with respect to beta and gamma
+* `#1178 <https://github.com/CoolProp/CoolProp/issues/1178>`_ : Android Wrapper Undefined Reference error with latest ndk
+* `#1176 <https://github.com/CoolProp/CoolProp/issues/1176>`_ : [VTPR] mole fractions must be set before calling set_temperature
+* `#1175 <https://github.com/CoolProp/CoolProp/issues/1175>`_ : Impose phase for REFPROP in low-level interface
+* `#1174 <https://github.com/CoolProp/CoolProp/issues/1174>`_ : Update PHP module docs
+* `#1172 <https://github.com/CoolProp/CoolProp/issues/1172>`_ : Please Help With Java Wrapper
+* `#1170 <https://github.com/CoolProp/CoolProp/issues/1170>`_ : Incorrect InChI keys
+* `#1169 <https://github.com/CoolProp/CoolProp/issues/1169>`_ : Issue with PropsSI on Methane-Ethane mixtures
+* `#1168 <https://github.com/CoolProp/CoolProp/issues/1168>`_ : Volume translation for cubic
+* `#1166 <https://github.com/CoolProp/CoolProp/issues/1166>`_ : Thermodynamic Properties of R1233zd(E)
+* `#1165 <https://github.com/CoolProp/CoolProp/issues/1165>`_ : Not erroring if T < Tmin and p > ptriple
+* `#1164 <https://github.com/CoolProp/CoolProp/issues/1164>`_ : REFPROP doesn't store mole fractions in phase envelope
+* `#1161 <https://github.com/CoolProp/CoolProp/issues/1161>`_ : [VTPR] gE/RT needs to be multiplied by RT
+* `#1158 <https://github.com/CoolProp/CoolProp/issues/1158>`_ : Retrieve phase envelope through high-level DLL
+* `#1150 <https://github.com/CoolProp/CoolProp/issues/1150>`_ : IF97 backend: Wrong results for cvmass
+* `#1148 <https://github.com/CoolProp/CoolProp/issues/1148>`_ : Add new EOS for MDM of Thol
+* `#1146 <https://github.com/CoolProp/CoolProp/issues/1146>`_ : MEXW32 is actually 64-bit and crashes MATLAB
+* `#1145 <https://github.com/CoolProp/CoolProp/issues/1145>`_ : Re-implement fundamental derivative of gas dynamics
+* `#1144 <https://github.com/CoolProp/CoolProp/issues/1144>`_ : Repair use of spinodals and cubic backend
+* `#1143 <https://github.com/CoolProp/CoolProp/issues/1143>`_ : PT inputs for cubics without phase specification
+* `#1142 <https://github.com/CoolProp/CoolProp/issues/1142>`_ : PQ inputs very slow for cubic backends
+* `#1141 <https://github.com/CoolProp/CoolProp/issues/1141>`_ : dichloroethane has the wrong CAS #
+* `#1137 <https://github.com/CoolProp/CoolProp/issues/1137>`_ : Nonsensical results for mistaken inputs with INCOMP fluids
+* `#1122 <https://github.com/CoolProp/CoolProp/issues/1122>`_ : Calculate density with PropsSi in Javascript
+* `#1120 <https://github.com/CoolProp/CoolProp/issues/1120>`_ : Allow state generation from backend_name() return values
+* `#1118 <https://github.com/CoolProp/CoolProp/issues/1118>`_ : Fix plots for cases with multiple critical points
+* `#1114 <https://github.com/CoolProp/CoolProp/issues/1114>`_ : Export set_binary_interaction_double + Julia wrapper improvement
+* `#1111 <https://github.com/CoolProp/CoolProp/issues/1111>`_ : Improvements to SMath wrapper error handling and some small tweaks
+* `#1109 <https://github.com/CoolProp/CoolProp/issues/1109>`_ : SMath wrapper: update AssemblyInfo.cs.template
+* `#1108 <https://github.com/CoolProp/CoolProp/issues/1108>`_ : SMath copyright year outdated
+* `#1107 <https://github.com/CoolProp/CoolProp/issues/1107>`_ : Allow conditional build of SMath in source tree (fixes #1110)
+
+Pull Requests merged:
+
+* `#1283 <https://github.com/CoolProp/CoolProp/pull/1283>`_ : Add pure fluid check to VTPR
+* `#1282 <https://github.com/CoolProp/CoolProp/pull/1282>`_ : Correct typo, see #1270
+* `#1272 <https://github.com/CoolProp/CoolProp/pull/1272>`_ : Solves a bug in VTPR
+* `#1271 <https://github.com/CoolProp/CoolProp/pull/1271>`_ : Remove possible division by 0, closes #1270
+* `#1269 <https://github.com/CoolProp/CoolProp/pull/1269>`_ : SatL and SatV of type VTPR too
+* `#1266 <https://github.com/CoolProp/CoolProp/pull/1266>`_ : Small fixes for VTPR
+* `#1262 <https://github.com/CoolProp/CoolProp/pull/1262>`_ : Set alpha function in JSON
+* `#1261 <https://github.com/CoolProp/CoolProp/pull/1261>`_ : Update CMakeLists.txt
+* `#1258 <https://github.com/CoolProp/CoolProp/pull/1258>`_ : Solves a bug with cubic and mixtures
+* `#1257 <https://github.com/CoolProp/CoolProp/pull/1257>`_ : Update iPhone compilation docs
+* `#1239 <https://github.com/CoolProp/CoolProp/pull/1239>`_ : Shortcut VTPR when pure fluids, solves #1232
+* `#1234 <https://github.com/CoolProp/CoolProp/pull/1234>`_ : Add the ability to set limits in Consistency plots
+* `#1214 <https://github.com/CoolProp/CoolProp/pull/1214>`_ : Refactor exceptions in CoolPropLib.cpp close #1200
+* `#1211 <https://github.com/CoolProp/CoolProp/pull/1211>`_ : Use aii_term and b0_ii from cubic
+* `#1209 <https://github.com/CoolProp/CoolProp/pull/1209>`_ : Correct tau derivatives in VTPR
+* `#1208 <https://github.com/CoolProp/CoolProp/pull/1208>`_ : Correct derivatives of am and test for VTPR
+* `#1196 <https://github.com/CoolProp/CoolProp/pull/1196>`_ : Update CoolPropLib.def
+* `#1195 <https://github.com/CoolProp/CoolProp/pull/1195>`_ : Merge VTPR
+* `#1114 <https://github.com/CoolProp/CoolProp/pull/1114>`_ : Export set_binary_interaction_double + Julia wrapper improvement
+* `#1111 <https://github.com/CoolProp/CoolProp/pull/1111>`_ : Improvements to SMath wrapper error handling and some small tweaks
+* `#1109 <https://github.com/CoolProp/CoolProp/pull/1109>`_ : SMath wrapper: update AssemblyInfo.cs.template
+* `#1107 <https://github.com/CoolProp/CoolProp/pull/1107>`_ : Allow conditional build of SMath in source tree (fixes #1110)
+* `#1103 <https://github.com/CoolProp/CoolProp/pull/1103>`_ : One small tweak to Props1
+* `#1101 <https://github.com/CoolProp/CoolProp/pull/1101>`_ : Add error handling to some functions, see #1096
+* `#1100 <https://github.com/CoolProp/CoolProp/pull/1100>`_ : Allow cmake properly build SMath wrapper
+* `#1097 <https://github.com/CoolProp/CoolProp/pull/1097>`_ : Set error string in get_parameter_information_string() and fix SMath wrapper : fixes #1096
+* `#1093 <https://github.com/CoolProp/CoolProp/pull/1093>`_ : Revert part of 763d4ce to solve #1077
+
+6.0.0
+-----
+
+New features:
+
+* MathCAD wrapper working again (thanks to Jeff Henning)
+* Added binary interaction parameters for more than 400 mixtures 
+* Added a cubic backend supporting PR and SRK for some calculations
+* Added new non-iterative viscosity model for a few refrigerants (especially R32 and R245fa)
+* Implemented EOS for HCl, D4, ethylene oxide, and dichloroethane from M. Thol
+* ... and a lot of little bugfixes (see issues)
+
+Contributors to this release:
+ibell, jowr, henningjp, bilderbuchi, dinojr, mapipolo, Mol3culo, stefann82, arashsk, pypamart, milesabarr, wahlenkus, saha84, EmiCas, Heathckliff, Tom0310, dizzux, davideziviani, paarfi
+
+Issues Closed:
+
+* `#1056 <http://github.com/CoolProp/CoolProp/issues/1056>`_ : Added "set_reference_state" wrapper for Mathcad and Updated Example Worksheets
+* `#1053 <http://github.com/CoolProp/CoolProp/issues/1053>`_ : Align Tmax with REFPROP values
+* `#1049 <http://github.com/CoolProp/CoolProp/issues/1049>`_ : apply_simple_mixing_rule should be implemented for HEOS instances
+* `#1048 <http://github.com/CoolProp/CoolProp/issues/1048>`_ : Calling set_binary_interaction_double on AbstractState instance has no effect
+* `#1047 <http://github.com/CoolProp/CoolProp/issues/1047>`_ : Mathcad Wrapper Updates for CoolProp 5.x and 6
+* `#1044 <http://github.com/CoolProp/CoolProp/issues/1044>`_ : Manylinux build integration
+* `#1041 <http://github.com/CoolProp/CoolProp/issues/1041>`_ : Fixed Minor MSVC Compiler Warnings
+* `#1034 <http://github.com/CoolProp/CoolProp/issues/1034>`_ : Strange behaviour of densities at critical point
+* `#1033 <http://github.com/CoolProp/CoolProp/issues/1033>`_ : Python builder issues
+* `#1032 <http://github.com/CoolProp/CoolProp/issues/1032>`_ : Rewrite mixture derivatives tests to use new format
+* `#1031 <http://github.com/CoolProp/CoolProp/issues/1031>`_ : Fixes STRING conflict between Mathcad library and cppformat
+* `#1030 <http://github.com/CoolProp/CoolProp/issues/1030>`_ : Add pass-throughs for testing derivatives
+* `#1029 <http://github.com/CoolProp/CoolProp/issues/1029>`_ : Sphinx builder
+* `#1028 <http://github.com/CoolProp/CoolProp/issues/1028>`_ : ALTERNATIVE_REFPROP_PATH ignored for predefined mixtures
+* `#1026 <http://github.com/CoolProp/CoolProp/issues/1026>`_ : Add REFPROP version to REFPROP comparison script
+* `#1025 <http://github.com/CoolProp/CoolProp/issues/1025>`_ : Phase envelopes construction failing for example in docs 
+* `#1024 <http://github.com/CoolProp/CoolProp/issues/1024>`_ : VLE calcs failing for SRK & PR backends
+* `#1023 <http://github.com/CoolProp/CoolProp/issues/1023>`_ : AbstractState.update fails for mixtures containing specific refrigerants using REFPROP backend
+* `#1020 <http://github.com/CoolProp/CoolProp/issues/1020>`_ : Add target_link_libraries to CMakeLists.txt
+* `#1014 <http://github.com/CoolProp/CoolProp/issues/1014>`_ : Figure out how to make coolprop static library a clean cmake dependency
+* `#1012 <http://github.com/CoolProp/CoolProp/issues/1012>`_ : Residual Helmholtz energy not work
+* `#1011 <http://github.com/CoolProp/CoolProp/issues/1011>`_ : Update references
+* `#1010 <http://github.com/CoolProp/CoolProp/issues/1010>`_ : Derivative of residual Helmholtz energy with delta
+* `#1009 <http://github.com/CoolProp/CoolProp/issues/1009>`_ : Can't compute densities at the triple point
+* `#1007 <http://github.com/CoolProp/CoolProp/issues/1007>`_ : 'error: key [Ar] was not found in string_to_index'
+* `#1006 <http://github.com/CoolProp/CoolProp/issues/1006>`_ : Use c++14 when building on MINGW
+* `#1005 <http://github.com/CoolProp/CoolProp/issues/1005>`_ : Derivative of the saturation enthalpy cair_sat = d(hsat)/dT
+* `#1003 <http://github.com/CoolProp/CoolProp/issues/1003>`_ : Fix bug in Chung estimation model
+* `#1002 <http://github.com/CoolProp/CoolProp/issues/1002>`_ : Add python 3.5 wheel
+* `#1001 <http://github.com/CoolProp/CoolProp/issues/1001>`_ : DmolarP broken for Air
+* `#1000 <http://github.com/CoolProp/CoolProp/issues/1000>`_ : Fix setting of BIP function
+* `#999 <http://github.com/CoolProp/CoolProp/issues/999>`_ : Abbreviate all journal names
+* `#998 <http://github.com/CoolProp/CoolProp/issues/998>`_ : Refine phase envelope better on liquid side
+* `#997 <http://github.com/CoolProp/CoolProp/issues/997>`_ : Abbreviate IECR in CoolProp reference
+* `#996 <http://github.com/CoolProp/CoolProp/issues/996>`_ : Update references for R245fa and R1234ze(E)
+* `#995 <http://github.com/CoolProp/CoolProp/issues/995>`_ : Check double_equal in CPnumerics.h
+* `#994 <http://github.com/CoolProp/CoolProp/issues/994>`_ : Find a way to simplify includes
+* `#993 <http://github.com/CoolProp/CoolProp/issues/993>`_ : Test/Add example for DLL calling from C
+* `#992 <http://github.com/CoolProp/CoolProp/issues/992>`_ : Fix reference for R1234ze(E) again
+* `#987 <http://github.com/CoolProp/CoolProp/issues/987>`_ : Multiple EOS paper refs run together
+* `#986 <http://github.com/CoolProp/CoolProp/issues/986>`_ : Air lookup in Excel v5.1.2
+* `#982 <http://github.com/CoolProp/CoolProp/issues/982>`_ : Reorganize CoolPropTools.h into smaller modules
+* `#981 <http://github.com/CoolProp/CoolProp/issues/981>`_ : Saturation states
+* `#976 <http://github.com/CoolProp/CoolProp/issues/976>`_ : Add high-level functions to Julia wrapper
+* `#975 <http://github.com/CoolProp/CoolProp/issues/975>`_ : Correct get_parameter_information_string, fixes #974
+* `#973 <http://github.com/CoolProp/CoolProp/issues/973>`_ : Remove warnings when using Julia 0.4 realease
+* `#971 <http://github.com/CoolProp/CoolProp/issues/971>`_ : Fix bug in PhaseEnvelopeRoutines::evaluate
+* `#970 <http://github.com/CoolProp/CoolProp/issues/970>`_ : Props1SI function missing in Mathematica wrapper on OSX
+* `#968 <http://github.com/CoolProp/CoolProp/issues/968>`_ : Update index.rst
+* `#967 <http://github.com/CoolProp/CoolProp/issues/967>`_ : SO2 ancillaries broken
+* `#964 <http://github.com/CoolProp/CoolProp/issues/964>`_ : Update index.rst
+* `#963 <http://github.com/CoolProp/CoolProp/issues/963>`_ : Update index.rst
+* `#962 <http://github.com/CoolProp/CoolProp/issues/962>`_ : Update sample.sce
+* `#960 <http://github.com/CoolProp/CoolProp/issues/960>`_ : Update index.rst
+* `#953 <http://github.com/CoolProp/CoolProp/issues/953>`_ : Remap CoolPropDbl to double
+* `#952 <http://github.com/CoolProp/CoolProp/issues/952>`_ : Switch string formatting to use the cppformat library; see #907
+* `#951 <http://github.com/CoolProp/CoolProp/issues/951>`_ : Allow gibbs as input to first_partial_deriv()
+* `#950 <http://github.com/CoolProp/CoolProp/issues/950>`_ : Wrong units for residual entropy
+* `#949 <http://github.com/CoolProp/CoolProp/issues/949>`_ : Fix {} in bibtex to protect title capitalization
+* `#948 <http://github.com/CoolProp/CoolProp/issues/948>`_ : Update reference for  EOS-CG
+* `#947 <http://github.com/CoolProp/CoolProp/issues/947>`_ : Add Fij to REFPROPMixtureBackend::get_binary_interaction_double
+* `#945 <http://github.com/CoolProp/CoolProp/issues/945>`_ : Add EOS for R245ca
+* `#944 <http://github.com/CoolProp/CoolProp/issues/944>`_ : Update reference for R1233ze(E)
+* `#941 <http://github.com/CoolProp/CoolProp/issues/941>`_ : CoolProp returns same value for p_critical and p_triple for R503
+* `#937 <http://github.com/CoolProp/CoolProp/issues/937>`_ : Allow ability to get refprop version
+* `#934 <http://github.com/CoolProp/CoolProp/issues/934>`_ : Memory access violation on mixture update at very low pressures using tabular backend
+* `#933 <http://github.com/CoolProp/CoolProp/issues/933>`_ : ValueError: Bad phase to solver_rho_Tp_SRK (CoolProp 5.1.2)
+* `#932 <http://github.com/CoolProp/CoolProp/issues/932>`_ : Fix EOS reference for oxygen
+* `#931 <http://github.com/CoolProp/CoolProp/issues/931>`_ : Remap CoolPropDbl to double permanently
+* `#930 <http://github.com/CoolProp/CoolProp/issues/930>`_ : Phase envelopes should be begin at much lower pressure
+* `#929 <http://github.com/CoolProp/CoolProp/issues/929>`_ : PT should start with Halley's method everywhere
+* `#928 <http://github.com/CoolProp/CoolProp/issues/928>`_ : Add EOS for HCl, D4, ethylene oxide, and dichloroethane
+* `#927 <http://github.com/CoolProp/CoolProp/issues/927>`_ : Add ability to use Henry's Law to get guesses for liquid phase composition
+* `#926 <http://github.com/CoolProp/CoolProp/issues/926>`_ : hydrogen formula is wrong
+* `#925 <http://github.com/CoolProp/CoolProp/issues/925>`_ : Fix HS inputs 
+* `#921 <http://github.com/CoolProp/CoolProp/issues/921>`_ : Tabular calcs with mixtures often return Dew T< Bubble T using PQ input pair
+* `#920 <http://github.com/CoolProp/CoolProp/issues/920>`_ : Cant find temperature at pressure and entropy
+* `#917 <http://github.com/CoolProp/CoolProp/issues/917>`_ : Fix errors in docs
+* `#907 <http://github.com/CoolProp/CoolProp/issues/907>`_ : Replace string formatting with C++ format library
+* `#905 <http://github.com/CoolProp/CoolProp/issues/905>`_ : Using conda recipes
+* `#885 <http://github.com/CoolProp/CoolProp/issues/885>`_ : Duplicate critical points found 
+* `#854 <http://github.com/CoolProp/CoolProp/issues/854>`_ : Coolprop R448A, R449A or R450A
+* `#816 <http://github.com/CoolProp/CoolProp/issues/816>`_ : Issue with viscosity of R245FA
+* `#808 <http://github.com/CoolProp/CoolProp/issues/808>`_ : Implement tangent plane distance
+* `#665 <http://github.com/CoolProp/CoolProp/issues/665>`_ : Viscosity convergence issue
+* `#279 <http://github.com/CoolProp/CoolProp/issues/279>`_ : Rebuild MathCAD wrapper with v5 support
+* `#186 <http://github.com/CoolProp/CoolProp/issues/186>`_ : Convert cubics to HE
+
+Pull Requests merged:
+
+* `#1062 <http://github.com/CoolProp/CoolProp/pull/1062>`_ : Export first_partial_deriv, see #946 #1062
+* `#1056 <http://github.com/CoolProp/CoolProp/pull/1056>`_ : Added "set_reference_state" wrapper for Mathcad and Updated Example Worksheets
+* `#1053 <http://github.com/CoolProp/CoolProp/pull/1053>`_ : Align Tmax with REFPROP values
+* `#1047 <http://github.com/CoolProp/CoolProp/pull/1047>`_ : Mathcad Wrapper Updates for CoolProp 5.x and 6
+* `#1041 <http://github.com/CoolProp/CoolProp/pull/1041>`_ : Fixed Minor MSVC Compiler Warnings
+* `#1031 <http://github.com/CoolProp/CoolProp/pull/1031>`_ : Fixes STRING conflict between Mathcad library and cppformat
+* `#1020 <http://github.com/CoolProp/CoolProp/pull/1020>`_ : Add target_link_libraries to CMakeLists.txt
+* `#982 <http://github.com/CoolProp/CoolProp/pull/982>`_ : Reorganize CoolPropTools.h into smaller modules
+* `#981 <http://github.com/CoolProp/CoolProp/pull/981>`_ : Saturation states
+* `#976 <http://github.com/CoolProp/CoolProp/pull/976>`_ : Add high-level functions to Julia wrapper
+* `#975 <http://github.com/CoolProp/CoolProp/pull/975>`_ : Correct get_parameter_information_string, fixes #974
+* `#973 <http://github.com/CoolProp/CoolProp/pull/973>`_ : Remove warnings when using Julia 0.4 realease
+* `#968 <http://github.com/CoolProp/CoolProp/pull/968>`_ : Update index.rst
+* `#964 <http://github.com/CoolProp/CoolProp/pull/964>`_ : Update index.rst
+* `#963 <http://github.com/CoolProp/CoolProp/pull/963>`_ : Update index.rst
+* `#962 <http://github.com/CoolProp/CoolProp/pull/962>`_ : Update sample.sce
+* `#960 <http://github.com/CoolProp/CoolProp/pull/960>`_ : Update index.rst
+* `#953 <http://github.com/CoolProp/CoolProp/pull/953>`_ : Remap CoolPropDbl to double
+* `#952 <http://github.com/CoolProp/CoolProp/pull/952>`_ : Switch string formatting to use the cppformat library; see #907
+
 5.1.2
 -----
 

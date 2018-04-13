@@ -12,7 +12,7 @@ cimport cython
 import math
 import warnings
 
-from typedefs cimport CoolPropDbl
+from .typedefs cimport CoolPropDbl
 
 try:
     import numpy as np
@@ -39,6 +39,14 @@ cdef extern from "Configuration.h" namespace "CoolProp":
     string _get_config_as_json_string "CoolProp::get_config_as_json_string"() except +
     void _set_config_as_json_string "CoolProp::set_config_as_json_string"(string) except +
     string _config_key_description "CoolProp::config_key_description"(string) except +
+    
+    void _set_config_string "CoolProp::set_config_string"(constants_header.configuration_keys,string) except +
+    void _set_config_double "CoolProp::set_config_double"(constants_header.configuration_keys,double) except +
+    void _set_config_bool "CoolProp::set_config_bool"(constants_header.configuration_keys,bint) except +
+    
+    string _get_config_string "CoolProp::get_config_string"(constants_header.configuration_keys) except +
+    double _get_config_double "CoolProp::get_config_double"(constants_header.configuration_keys) except +
+    bint _get_config_bool "CoolProp::get_config_bool"(constants_header.configuration_keys) except +
 
 cdef extern from "DataStructures.h" namespace "CoolProp":    
     string _get_parameter_information "CoolProp::get_parameter_information"(int, string) except +
@@ -64,6 +72,7 @@ cdef extern from "CoolProp.h" namespace "CoolProp":
     void _set_reference_stateS "CoolProp::set_reference_stateS"(string, string) except +
     void _set_reference_stateD "CoolProp::set_reference_stateD"(string, double, double, double, double) except +
     double _saturation_ancillary "CoolProp::saturation_ancillary"(string, string, int, string, double) except +
+    bint _add_fluids_as_JSON "CoolProp::add_fluids_as_JSON"(const string backend, const string JSON) except +
  
 cdef extern from "HumidAirProp.h" namespace "HumidAir":
     double _HAPropsSI "HumidAir::HAPropsSI"(string OutputName, string Input1Name, double Input1, string Input2Name, double Input2, string Input3Name, double Input3)
@@ -75,10 +84,11 @@ cdef extern from "Backends/Helmholtz/MixtureParameters.h" namespace "CoolProp":
     string _get_mixture_binary_pair_data "CoolProp::get_mixture_binary_pair_data"(const string CAS1, const string CAS2, const string key) except +
     void _set_mixture_binary_pair_data "CoolProp::set_mixture_binary_pair_data"(const string CAS1, const string CAS2, const string key, const double val) except +
     void _apply_simple_mixing_rule "CoolProp::apply_simple_mixing_rule"(const string &CAS1, const string &CAS2, const string &rule) except +
+    void _set_departure_functions "CoolProp::set_departure_functions"(const string &functions) except +
 
 from constants import *
-from constants_header cimport *
-cimport constants_header
+from .constants_header cimport *
+from . cimport constants_header
 
 cdef bint iterable(object a):
     """
@@ -202,6 +212,30 @@ cpdef set_config_as_json_string(string s):
     Current state can be obtained by calling get_config_as_json_string
     """
     _set_config_as_json_string(s)
+    
+cpdef set_config_double(constants_header.configuration_keys key, double value):
+    """ Set configuration key that is a double-precision float;  wrapper of wrapper of C++ function :cpapi:`CoolProp::set_config_double` """
+    _set_config_double(key, value)
+    
+cpdef set_config_string(constants_header.configuration_keys key, string value):
+    """ Set a configuration key that is a string;  wrapper of wrapper of C++ function :cpapi:`CoolProp::set_config_string` """
+    _set_config_string(key, value)
+    
+cpdef set_config_bool(constants_header.configuration_keys key, bint value):
+    """ Set a configuration key that is a boolean;  wrapper of wrapper of C++ function :cpapi:`CoolProp::set_config_bool` """
+    _set_config_bool(key, value)
+    
+cpdef double get_config_double(constants_header.configuration_keys key):
+    """ Get a configuration key that is a double-precision float;  wrapper of wrapper of C++ function :cpapi:`CoolProp::get_config_double` """
+    return _get_config_double(key)
+    
+cpdef string get_config_string(constants_header.configuration_keys key):
+    """ Get a configuration key that is a string;  wrapper of wrapper of C++ function :cpapi:`CoolProp::get_config_string` """
+    return _get_config_string(key)
+    
+cpdef bint get_config_bool(constants_header.configuration_keys key):
+    """ Get a configuration key that is a boolean;  wrapper of wrapper of C++ function :cpapi:`CoolProp::get_config_bool` """
+    return _get_config_bool(key)
 
 cpdef int get_parameter_index(string key):
     return _get_parameter_index(key)
@@ -224,6 +258,12 @@ cpdef set_mixture_binary_pair_data(CAS1, CAS2, key, val):
     """
     _set_mixture_binary_pair_data(CAS1, CAS2, key, val)
 
+cpdef add_fluids_as_JSON(backend, JSONstring):
+    """
+    Add fluids in a JSON-formatted string format. Python wrapper of C++ function :cpapi:`CoolProp::add_fluids_as_JSON`
+    """
+    _add_fluids_as_JSON(backend, JSONstring)
+
 cpdef get_global_param_string(string param):
     return _get_global_param_string(param)
     
@@ -238,6 +278,12 @@ cpdef apply_simple_mixing_rule(CAS1, CAS2, rule):
     Apply simple mixing rule.  Currently linear or Lorentz-Berthelot.  Python wrapper of C++ function :cpapi:`CoolProp::apply_simple_mixing_rule`
     """
     _apply_simple_mixing_rule(CAS1, CAS2, rule)
+
+cpdef set_departure_functions(functions):
+    """
+    Specify the departure terms as JSON. Python wrapper of C++ function :cpapi:`CoolProp::set_departure_functions`
+    """
+    _set_departure_functions(functions)
     
 cpdef double saturation_ancillary(string name, string output, int Q, string input, double value):
     """
@@ -579,7 +625,7 @@ cdef class State:
     sets the internal variables in the most computationally efficient way possible
     """
 
-    def __init__(self, object Fluid, dict StateDict, object phase = None, backend = None):
+    def __init__(self, object _Fluid, dict StateDict, object phase = None, backend = None):
         """
         Parameters
         ----------
@@ -591,26 +637,28 @@ cdef class State:
         backend : string
             The CoolProp backend that should be used, one of "HEOS" (default), "REFPROP", "INCOMP", "BRINE", etc.
         """
-        cdef string _Fluid = Fluid
+        cdef string Fluid = _Fluid
+        
 
-        if _Fluid == <string>'none':
+        if Fluid == b'none':
             return
         else:
-            if '::' in Fluid:
-                backend, Fluid = Fluid.split(u'::',1)
+            if b'::' in <bytes>Fluid:
+                backend, Fluid = (<bytes>Fluid).split(b'::')
             elif backend is None:
                 backend = u'?'
 
             self.set_Fluid(Fluid, backend)
-        self.Fluid = _Fluid
+        self.Fluid = Fluid
 
         # Parse the inputs provided
         if StateDict is not None:
             self.update(StateDict)
 
-        self.phase = phase
         if phase is None:
-            self.phase = u'??'.encode('ascii')
+            self.phase = b'??'
+        else:
+            self.phase = phase.encode('ascii')
 
         # Set the phase flag
         if self.phase.lower() == 'gas':
@@ -727,7 +775,7 @@ cdef class State:
 
     cpdef double get_Q(self) except *:
         """ Get the quality [-] """
-        return self.Props(iQ)
+        return self.pAS.Q()
     property Q:
         """ The quality [-] """
         def __get__(self):
@@ -735,7 +783,7 @@ cdef class State:
 
     cpdef double get_MM(self) except *:
         """ Get the mole mass [kg/kmol] or [g/mol] """
-        return self.Props(imolar_mass)*1000
+        return self.pAS.molar_mass()*1000
     property MM:
         """ The molar mass [kg/kmol] or [g/mol] """
         def __get__(self):
@@ -743,7 +791,7 @@ cdef class State:
 
     cpdef double get_rho(self) except *:
         """ Get the density [kg/m^3] """
-        return self.Props(iDmass)
+        return self.pAS.rhomass()
     property rho:
         """ The density [kg/m^3] """
         def __get__(self):
@@ -751,7 +799,7 @@ cdef class State:
 
     cpdef double get_p(self) except *:
         """ Get the pressure [kPa] """
-        return self.Props(iP)/1000
+        return self.pAS.p()/1000
     property p:
         """ The pressure [kPa] """
         def __get__(self):
@@ -759,7 +807,7 @@ cdef class State:
 
     cpdef double get_T(self) except *:
         """ Get the temperature [K] """
-        return self.Props(iT)
+        return self.pAS.T()
     property T:
         """ The temperature [K] """
         def __get__(self):
@@ -767,7 +815,7 @@ cdef class State:
 
     cpdef double get_h(self) except *:
         """ Get the specific enthalpy [kJ/kg] """
-        return self.Props(iHmass)/1000
+        return self.pAS.hmass()/1000
     property h:
         """ The specific enthalpy [kJ/kg] """
         def __get__(self):
@@ -775,7 +823,7 @@ cdef class State:
 
     cpdef double get_u(self) except *:
         """ Get the specific internal energy [kJ/kg] """
-        return self.Props(iUmass)/1000
+        return self.pAS.umass()/1000
     property u:
         """ The internal energy [kJ/kg] """
         def __get__(self):
@@ -783,7 +831,7 @@ cdef class State:
 
     cpdef double get_s(self) except *:
         """ Get the specific enthalpy [kJ/kg/K] """
-        return self.Props(iSmass)/1000
+        return self.pAS.smass()/1000
     property s:
         """ The specific enthalpy [kJ/kg/K] """
         def __get__(self):
@@ -799,7 +847,7 @@ cdef class State:
 
     cpdef double get_cp(self) except *:
         """ Get the specific heat at constant pressure  [kJ/kg/K] """
-        return self.Props(iCpmass)/1000
+        return self.pAS.cpmass()/1000
     property cp:
         """ The specific heat at constant pressure  [kJ/kg/K] """
         def __get__(self):
@@ -807,7 +855,7 @@ cdef class State:
 
     cpdef double get_cv(self) except *:
         """ Get the specific heat at constant volume  [kJ/kg/K] """
-        return self.Props(iCvmass)/1000
+        return self.pAS.cvmass()/1000
     property cv:
         """ The specific heat at constant volume  [kJ/kg/K] """
         def __get__(self):
@@ -819,7 +867,7 @@ cdef class State:
 
     cpdef double get_visc(self) except *:
         """ Get the viscosity, in [Pa-s]"""
-        return self.Props(iviscosity)
+        return self.pAS.viscosity()
     property visc:
         """ The viscosity, in [Pa-s]"""
         def __get__(self):
@@ -827,7 +875,7 @@ cdef class State:
 
     cpdef double get_cond(self) except *:
         """ Get the thermal conductivity, in [kW/m/K]"""
-        return self.Props(iconductivity)/1000
+        return self.pAS.conductivity()/1000
     property k:
         """ The thermal conductivity, in [kW/m/K]"""
         def __get__(self):

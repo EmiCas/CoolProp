@@ -85,6 +85,7 @@ enum parameters{
     iCvmolar, ///< Mole-based constant-volume specific heat
     iUmolar, ///< Mole-based internal energy
     iGmolar, ///< Mole-based Gibbs energy
+    iHelmholtzmolar, ///< Mole-based Helmholtz energy
     iSmolar_residual, ///< The residual molar entropy (s^r/R = tau*dar_dtau-ar)
 
     // Mass specific thermodynamic properties
@@ -96,6 +97,7 @@ enum parameters{
     iCvmass, ///< Mass-based constant-volume specific heat
     iUmass, ///< Mass-based internal energy
     iGmass, ///< Mass-based Gibbs energy
+    iHelmholtzmass, ///< Mass-based Helmholtz energy
 
     // Transport properties
     iviscosity, ///< Viscosity
@@ -147,6 +149,7 @@ enum parameters{
     
 };
 // !! If you add a parameter, update the map in the corresponding CPP file !!
+// !! Also update phase_lookup_string() in CoolProp.cpp                    !!
 
 /// These are constants for the phases of the fluid
 enum phases{iphase_liquid, ///< Subcritical liquid 
@@ -166,6 +169,11 @@ std::string get_parameter_information(int key, const std::string &info);
 
 /// Return the enum key corresponding to the parameter name ("Dmolar" for instance)
 parameters get_parameter_index(const std::string &param_name);
+
+/// Return true if passed phase name is valid, otherwise false
+/// @param phase_name The phase name string to be checked ("phase_liquid" for instance)
+/// @param iOutput Gets updated with the phases enum value if phase_name is found
+bool is_valid_phase(const std::string &phase_name, phases &iOutput);
 
 /// Return the enum key corresponding to the phase name ("phase_liquid" for instance)
 phases get_phase_index(const std::string &param_name);
@@ -196,8 +204,6 @@ std::string get_csv_parameter_list();
 
 /// These are constants for the compositions
 enum composition_types{IFRAC_MASS, IFRAC_MOLE, IFRAC_VOLUME, IFRAC_UNDEFINED, IFRAC_PURE};
-
-const CoolPropDbl R_u_CODATA = 8.3144621; ///< The value for the ideal gas constant in J/mol/K according to CODATA 2010.  This value is used to harmonize all the ideal gas constants.  This is especially important in the critical region.
 
 /// These are unit types for the fluid
 enum fluid_types{FLUID_TYPE_PURE, FLUID_TYPE_PSEUDOPURE, FLUID_TYPE_REFPROP, FLUID_TYPE_INCOMPRESSIBLE_LIQUID, FLUID_TYPE_INCOMPRESSIBLE_SOLUTION, FLUID_TYPE_UNDEFINED};
@@ -392,6 +398,43 @@ void split_input_pair(input_pairs pair, parameters &p1, parameters &p2);
 
 extern std::string get_mixture_binary_pair_data(const std::string &CAS1, const std::string &CAS2, const std::string &param);
 extern void set_mixture_binary_pair_data(const std::string &CAS1, const std::string &CAS2, const std::string &param, const double val);
+
+
+/// The structure is taken directly from the AbstractState class.
+// !! If you add a parameter, update the map in the corresponding CPP file !!
+enum backend_families {
+    INVALID_BACKEND_FAMILY = 0,
+    HEOS_BACKEND_FAMILY,
+    REFPROP_BACKEND_FAMILY,
+    INCOMP_BACKEND_FAMILY,
+    IF97_BACKEND_FAMILY,
+    TREND_BACKEND_FAMILY,
+    TTSE_BACKEND_FAMILY,
+    BICUBIC_BACKEND_FAMILY,
+    SRK_BACKEND_FAMILY,
+    PR_BACKEND_FAMILY,
+    VTPR_BACKEND_FAMILY
+};
+enum backends {
+    INVALID_BACKEND = 0,
+    HEOS_BACKEND_PURE,
+    HEOS_BACKEND_MIX,
+    REFPROP_BACKEND_PURE,
+    REFPROP_BACKEND_MIX,
+    INCOMP_BACKEND,
+    IF97_BACKEND,
+    TREND_BACKEND,
+    TTSE_BACKEND,
+    BICUBIC_BACKEND,
+    SRK_BACKEND,
+    PR_BACKEND,
+    VTPR_BACKEND
+};
+
+/// Convert a string into the enum values
+void extract_backend_families(std::string backend_string, backend_families &f1, backend_families &f2);
+void extract_backend_families_string(std::string backend_string, backend_families &f1, std::string &f2);
+std::string get_backend_string(backends backend);
 
 } /* namespace CoolProp */
 #endif /* DATASTRUCTURES_H_ */

@@ -1,5 +1,4 @@
 {
-  "ALIASES": [], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -181,18 +180,6 @@
       ]
     }
   }, 
-  "CAS": "75-45-6", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "A1", 
-    "FH": 1, 
-    "GWP100": 1810.0, 
-    "GWP20": 5160.0, 
-    "GWP500": 549.0, 
-    "HH": 1, 
-    "Name": "R22", 
-    "ODP": 0.05, 
-    "PH": 0
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
@@ -227,7 +214,7 @@
           "T_units": "K", 
           "hmolar": 2559.4875614060247, 
           "hmolar_units": "J/mol", 
-          "p": 0.37936328456056284, 
+          "p": 0.3794747321972858, 
           "p_units": "Pa", 
           "rhomolar": 19906.534060848982, 
           "rhomolar_units": "mol/m^3", 
@@ -239,7 +226,7 @@
           "T_units": "K", 
           "hmolar": 28768.747001737593, 
           "hmolar_units": "J/mol", 
-          "p": 0.37946967329532866, 
+          "p": 0.3794747321972858, 
           "p_units": "Pa", 
           "rhomolar": 0.00039436211244907326, 
           "rhomolar_units": "mol/m^3", 
@@ -493,9 +480,29 @@
       "pseudo_pure": false
     }
   ], 
-  "FORMULA": "C_{1}Cl_{1}F_{2}H_{1}", 
-  "NAME": "R22", 
-  "REFPROP_NAME": "R22", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=6132", 
+    "ALIASES": [], 
+    "CAS": "75-45-6", 
+    "CHEMSPIDER_ID": 6132, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "A1", 
+      "FH": 1, 
+      "GWP100": 1810.0, 
+      "GWP20": 5160.0, 
+      "GWP500": 549.0, 
+      "HH": 1, 
+      "Name": "R22", 
+      "ODP": 0.05, 
+      "PH": 0
+    }, 
+    "FORMULA": "C_{1}Cl_{1}F_{2}H_{1}", 
+    "INCHI_KEY": "VOPWNXZWBYDODV-UHFFFAOYAQ", 
+    "INCHI_STRING": "InChI=1/CHClF2/c2-1(3)4/h1H", 
+    "NAME": "R22", 
+    "REFPROP_NAME": "R22", 
+    "SMILES": "C(F)(F)Cl"
+  }, 
   "STATES": {
     "critical": {
       "T": 369.295, 
@@ -514,7 +521,7 @@
       "T_units": "K", 
       "hmolar": 2559.4875614060247, 
       "hmolar_units": "J/mol", 
-      "p": 0.37936328456056284, 
+      "p": 0.3794747321972858, 
       "p_units": "Pa", 
       "rhomolar": 19906.534060848982, 
       "rhomolar_units": "mol/m^3", 
@@ -526,7 +533,7 @@
       "T_units": "K", 
       "hmolar": 28768.747001737593, 
       "hmolar_units": "J/mol", 
-      "p": 0.37946967329532866, 
+      "p": 0.3794747321972858, 
       "p_units": "Pa", 
       "rhomolar": 0.00039436211244907326, 
       "rhomolar_units": "mol/m^3", 
@@ -566,26 +573,47 @@
       "reference_fluid": "R134a", 
       "type": "ECS"
     }, 
-    "viscosity": {
-      "BibTeX": "Klein-IJR-1997", 
-      "epsilon_over_k": 284.72, 
-      "epsilon_over_k_units": "K", 
-      "psi": {
-        "a": [
-          1.106, 
-          -0.0491
+    "viscosity": [
+      {
+        "BibTeX": "Bell-PURDUE-2016-ETA", 
+        "C": 0.6682, 
+        "c_liq": [
+          0.6100913843, 
+          0.4508958312, 
+          -0.017063, 
+          0.000564
         ], 
-        "rhomolar_reducing": 6058.220000000001, 
-        "rhomolar_reducing_units": "mol/m^3", 
-        "t": [
-          0, 
-          1
-        ]
+        "c_vap": [
+          0.0, 
+          1.2, 
+          -0.308598, 
+          0.035317
+        ], 
+        "rhosr_critical": -72911.40129607519, 
+        "type": "rhosr-CS", 
+        "x_crossover": 2
       }, 
-      "reference_fluid": "R134a", 
-      "sigma_eta": 4.666e-10, 
-      "sigma_eta_units": "m", 
-      "type": "ECS"
-    }
+      {
+        "BibTeX": "Klein-IJR-1997", 
+        "epsilon_over_k": 284.72, 
+        "epsilon_over_k_units": "K", 
+        "psi": {
+          "a": [
+            1.106, 
+            -0.0491
+          ], 
+          "rhomolar_reducing": 6058.220000000001, 
+          "rhomolar_reducing_units": "mol/m^3", 
+          "t": [
+            0, 
+            1
+          ]
+        }, 
+        "reference_fluid": "R134a", 
+        "sigma_eta": 4.666e-10, 
+        "sigma_eta_units": "m", 
+        "type": "ECS"
+      }
+    ]
   }
 }

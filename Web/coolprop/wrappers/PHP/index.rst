@@ -19,7 +19,7 @@ Pre-Compiled Binaries
 
 * Modify the PHP.ini file that PHP will load to add::
 
-    extension = "CoolProp.so"
+    extension = "libCoolProp.so"
 
   after ``[PHP]``. If you didn't copy libCoolProp.so into the folder given by ```php-config --extension-dir``` you will need to use the absolute path
 
@@ -55,6 +55,36 @@ Pre-Compiled Binaries
      $T = PropsSI("T","P",$p,"Q",$Q,"Water");
      print "NBP of water is $T\n";
      ?>
+     
+ * And here is another example demonstrating how to call the low-level interface:
+ 
+   .. code-block:: php
+   
+     <?php
+        include_once "CoolProp.php";
+
+        // set the REFPROP path
+        set_config_string(ALTERNATIVE_REFPROP_PATH, "/opt/refprop/");
+
+        // extend the abstract class AbstractState
+        class ConcreteState extends AbstractState {
+            static function factory($backend, $fluid_names) {
+                $r = AbstractState_factory($backend, $fluid_names);
+                if (!is_resource($r)) return $r;
+                return new ConcreteState($r);
+            }
+        }
+
+        // instantiate the class
+        $water = ConcreteState::factory("REFPROP", "Water");
+
+        $p = 101325;
+        $Q = 1.0;
+        $water->update(PQ_INPUTS, $p, $Q);
+        $T = $water->T();
+
+        print "NBP of water is $T\n";
+    ?>
 
 User-Compiled Binaries
 ======================
@@ -69,10 +99,16 @@ Additionally, you need SWIG, which can be obtained on Debian-based OS with::
 
     sudo apt-get install swig
 
+On Ubuntu 16.04 LTS, the default PHP is 7.0, which is not compatible with SWIG as of Aug 10, 2016.  So to get PHP 5.6 on ubuntu 16.04, you can do::
+
+    sudo add-apt-repository ppa:ondrej/php
+    sudo apt-get update
+    sudo apt-get install php5.6 php5.6-dev
+
 Linux
 -----
 
-1. Check out coolprop::
+1. Check out CoolProp::
 
     git clone https://github.com/CoolProp/CoolProp --recursive
 
@@ -82,11 +118,11 @@ Linux
 
 3. Build the php module::
 
-    cmake .. -DCOOLPROP_PHP_MODULE=ON
+    cmake .. -DCOOLPROP_PHP_MODULE=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON
 
 4. Build (verbosely so we can see if there are any problems)::
 
-    make VERBOSE=1
+    cmake --build .
 
   This will generate the file libCoolProp.so and the php module CoolProp.php
 

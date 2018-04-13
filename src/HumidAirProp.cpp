@@ -1,5 +1,7 @@
 #if defined(_MSC_VER)
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
 #endif
 
 #include <memory>
@@ -21,7 +23,7 @@
 #include <string.h>
 #include <iostream>
 #include <list>
-#include "IF97.h"
+#include "externals/IF97/IF97.h"
 
 /// This is a stub overload to help with all the strcmp calls below and avoid needing to rewrite all of them
 std::size_t strcmp(const std::string &s, const std::string &e){
@@ -231,18 +233,17 @@ static double Brent_HAProps_W(givens OutputKey, double p, givens In1Name, double
             W_min_valid = ValidNumber(r_min);
         }
     }
-    std::string errstr;
     // We will do a secant call if the values at W_min and W_max have the same sign
     if (r_min*r_max > 0){
         if (std::abs(r_min) < std::abs(r_max)){
-            W = CoolProp::Secant(BSR, W_min, 0.01*W_min, 1e-7, 50, errstr);
+            W = CoolProp::Secant(BSR, W_min, 0.01*W_min, 1e-7, 50);
         }
         else{
-            W = CoolProp::Secant(BSR, W_max, -0.01*W_max, 1e-7, 50, errstr);
+            W = CoolProp::Secant(BSR, W_max, -0.01*W_max, 1e-7, 50);
         }
     }
     else{
-        W = CoolProp::Brent(BSR, W_min, W_max, 1e-7, 1e-4, 50, errstr);
+        W = CoolProp::Brent(BSR, W_min, W_max, 1e-7, 1e-4, 50);
     }
     return W;
 }
@@ -300,22 +301,56 @@ static double Brent_HAProps_T(givens OutputKey, double p, givens In1Name, double
             T_min_valid = ValidNumber(r_min);
         }
     }
-    std::string errstr;
     // We will do a secant call if the values at T_min and T_max have the same sign
     if (r_min*r_max > 0){
         if (std::abs(r_min) < std::abs(r_max)){
-            T = CoolProp::Secant(BSR, T_min, 0.01*T_min, 1e-7, 50, errstr);
+            T = CoolProp::Secant(BSR, T_min, 0.01*T_min, 1e-7, 50);
         }
         else{
-            T = CoolProp::Secant(BSR, T_max, -0.01*T_max, 1e-7, 50, errstr);
+            T = CoolProp::Secant(BSR, T_max, -0.01*T_max, 1e-7, 50);
         }
     }
     else{
-        T = CoolProp::Brent(BSR, T_min, T_max, 1e-7, 1e-4, 50, errstr);
+        T = CoolProp::Brent(BSR, T_min, T_max, 1e-7, 1e-4, 50);
     }
     return T;
 }
 static double Secant_Tdb_at_saturated_W(double psi_w, double p, double T_guess)
+{
+    double T;
+    class BrentSolverResids : public CoolProp::FuncWrapper1D
+    {
+    private:
+        double pp_water, psi_w, p;
+    public:
+        BrentSolverResids(double psi_w, double p) : psi_w(psi_w), p(p) { pp_water = psi_w*p; };
+        ~BrentSolverResids(){};
+        
+        double call(double T){
+            double p_ws;
+            if (T>=273.16){
+                // Saturation pressure [Pa] using IF97 formulation
+                p_ws= IF97::psat97(T);
+            }
+            else{
+                // Sublimation pressure [Pa]
+                p_ws=psub_Ice(T);
+            }
+            double f = f_factor(T, p);
+            double pp_water_calc = f*p_ws;
+            double psi_w_calc = pp_water_calc/p;
+            return (psi_w_calc - psi_w)/psi_w;
+        }
+    };
+    
+    BrentSolverResids Resids(psi_w, p);
+    
+    T = CoolProp::Secant(Resids, T_guess, 0.001*T_guess, 1e-7, 100);
+    
+    return T;
+}
+    
+static double Brent_Tdb_at_saturated_W(double psi_w, double p, double T_min, double T_max)
 {
     double T;
     class BrentSolverResids : public CoolProp::FuncWrapper1D
@@ -345,8 +380,7 @@ static double Secant_Tdb_at_saturated_W(double psi_w, double p, double T_guess)
 
     BrentSolverResids Resids(psi_w, p);
 
-    std::string errstr; 
-    T = CoolProp::Brent(Resids, 150, 350, 1e-16, 1e-7, 100, errstr);
+    T = CoolProp::Brent(Resids, 150, 350, 1e-16, 1e-7, 100);
 
     return T;
 }
@@ -783,9 +817,15 @@ double Conductivity(double T, double p, double psi_w)
     Phi_va=sqrt(2.0)/4.0*pow(1+Mw/Ma,-0.5)*pow(1+sqrt(mu_w/mu_a)*pow(Ma/Mw,0.25),2); //[-]
     return (1-psi_w)*k_a/((1-psi_w)+psi_w*Phi_av)+psi_w*k_w/(psi_w+(1-psi_w)*Phi_va);
 }
+/**
+ @param T Temperature in K
+ @param p Pressure in Pa
+ @param psi_w Water mole fraction in mol_w/mol_ha
+ @returns v Molar volume on a humid-air basis in m^3/mol_ha
+ */
 double MolarVolume(double T, double p, double psi_w)
 {
-    // Output in m^3/mol
+    // Output in m^3/mol_ha
     int iter;
     double v_bar0, v_bar=0, R_bar=8.314472,x1=0,x2=0,x3,y1=0,y2,resid,eps,Bm,Cm;
 
@@ -794,11 +834,11 @@ double MolarVolume(double T, double p, double psi_w)
     // -----------------------------
 
     // Start by assuming it is an ideal gas to get initial guess
-    v_bar0=R_bar*T/p;
+    v_bar0 = R_bar*T/p; // [m^3/mol_ha]
 
-    //Bring outside the loop since not a function of v_bar
-    Bm=B_m(T,psi_w);
-    Cm=C_m(T,psi_w);
+    // Bring outside the loop since not a function of v_bar
+    Bm = B_m(T,psi_w);
+    Cm = C_m(T,psi_w);
 
     iter=1; eps=1e-11; resid=999;
     while ((iter<=3 || std::abs(resid)>eps) && iter<100)
@@ -807,7 +847,7 @@ double MolarVolume(double T, double p, double psi_w)
         if (iter==2){x2=v_bar0+0.000001; v_bar=x2;}
         if (iter>2) {v_bar=x2;}
 
-            // want v_bar in m^3/mol and R_bar in J/mol-K
+            // want v_bar in m^3/mol_ha and R_bar in J/mol_ha-K
             resid = (p-(R_bar)*T/v_bar*(1+Bm/v_bar+Cm/(v_bar*v_bar)))/p;
 
         if (iter==1){y1=resid;}
@@ -819,7 +859,7 @@ double MolarVolume(double T, double p, double psi_w)
         }
         iter=iter+1;
     }
-    return v_bar;
+    return v_bar; // [J/mol_ha]
 }
 double Pressure(double T, double v_bar, double psi_w){
     double R_bar = 8.314472;
@@ -827,9 +867,9 @@ double Pressure(double T, double v_bar, double psi_w){
     double Cm = C_m(T, psi_w);
     return (R_bar)*T/v_bar*(1+Bm/v_bar+Cm/(v_bar*v_bar));
 }
-double IdealGasMolarEnthalpy_Water(double T, double vmolar)
+double IdealGasMolarEnthalpy_Water(double T, double p)
 {
-    double hbar_w_0, tau, rhomolar, hbar_w;
+    double hbar_w_0, tau, hbar_w;
     // Ideal-Gas contribution to enthalpy of water
     hbar_w_0 = -0.01102303806; //[J/mol]
     
@@ -841,15 +881,18 @@ double IdealGasMolarEnthalpy_Water(double T, double vmolar)
     double hoffset = href - href_EOS;
     
     tau = Water->keyed_output(CoolProp::iT_reducing)/T;
-    rhomolar = 1/vmolar; //[mol/m^3]
     Water->specify_phase(CoolProp::iphase_gas);
-    Water->update_DmolarT_direct(rhomolar, T);
+    Water->update_DmolarT_direct(p/(R_bar*T), T);
     Water->unspecify_phase();
     hbar_w = hbar_w_0 + hoffset + R_bar*T*(1+tau*Water->keyed_output(CoolProp::idalpha0_dtau_constdelta));
     return hbar_w;
 }
 double IdealGasMolarEntropy_Water(double T, double p)
 {
+    
+    // Serious typo in RP-1485 - should use total pressure rather than
+    // reference pressure in density calculation for water vapor molar entropy
+    
     double sbar_w, tau, R_bar;
     R_bar = 8.314371; //[J/mol/K]
     
@@ -860,6 +903,7 @@ double IdealGasMolarEntropy_Water(double T, double p)
     double sref_EOS = R_bar*(tauref*Water->keyed_output(CoolProp::idalpha0_dtau_constdelta)-Water->keyed_output(CoolProp::ialpha0));
     double soffset = sref - sref_EOS;
     
+    // Now calculate it based on the given inputs
     tau = Water->keyed_output(CoolProp::iT_reducing)/T;
     Water->specify_phase(CoolProp::iphase_gas);
     Water->update(CoolProp::DmolarT_INPUTS,p/(R_bar*T),T);
@@ -867,9 +911,9 @@ double IdealGasMolarEntropy_Water(double T, double p)
     sbar_w = soffset + R_bar*(tau*Water->keyed_output(CoolProp::idalpha0_dtau_constdelta)-Water->keyed_output(CoolProp::ialpha0)); //[kJ/kmol/K]
     return sbar_w;
 }
-double IdealGasMolarEnthalpy_Air(double T, double vmolar)
+double IdealGasMolarEnthalpy_Air(double T, double p)
 {
-    double hbar_a_0, tau, rhomolar, hbar_a, R_bar_Lemmon;
+    double hbar_a_0, tau, hbar_a, R_bar_Lemmon;
     // Ideal-Gas contribution to enthalpy of air
     hbar_a_0 = -7914.149298; //[J/mol]
     
@@ -883,10 +927,9 @@ double IdealGasMolarEnthalpy_Air(double T, double vmolar)
     
     // Tj is given by 132.6312 K
     tau = 132.6312/T;
-    rhomolar = 1/vmolar; //[mol/m^3]
     // Now calculate it based on the given inputs
     Air->specify_phase(CoolProp::iphase_gas);
-    Air->update_DmolarT_direct(rhomolar, T);
+    Air->update_DmolarT_direct(p/(R_bar*T), T);
     Air->unspecify_phase();
     hbar_a = hbar_a_0 + hoffset + R_bar_Lemmon*T*(1+tau*Air->keyed_output(CoolProp::idalpha0_dtau_constdelta)); //[J/mol]
     return hbar_a;
@@ -915,9 +958,16 @@ double IdealGasMolarEntropy_Air(double T, double vmolar_a)
     Air->unspecify_phase();
     sbar_a=sbar_0_Lem + soffset + R_bar_Lemmon*(tau*Air->keyed_output(CoolProp::idalpha0_dtau_constdelta)-Air->keyed_output(CoolProp::ialpha0))+R_bar_Lemmon*log(vmolar_a/vmolar_a_0); //[J/mol/K]
 
-    return sbar_a; //[J/mol/K]
+    return sbar_a; //[J/mol[air]/K]
 }
 
+/**
+ @param T Temperature, in K
+ @param p Pressure (not used)
+ @param psi_w Water mole fraction (mol_w/mol_ha)
+ @param vmolar Mixture molar volume in m^3/mol_ha
+ @returns h_ha Mixture molar enthalpy on a humid air basis in J/mol_ha
+ */
 double MolarEnthalpy(double T, double p, double psi_w, double vmolar)
 {
     // In units of kJ/kmol
@@ -937,8 +987,8 @@ double MolarEnthalpy(double T, double p, double psi_w, double vmolar)
         hbar_a = 9.2486716590E-04*T*T + 2.8557221776E+01*T - 7.8616129429E+03;
     }
     else{
-        hbar_w = IdealGasMolarEnthalpy_Water(T, vmolar);
-        hbar_a = IdealGasMolarEnthalpy_Air(T, vmolar);
+        hbar_w = IdealGasMolarEnthalpy_Water(T, p); // [J/mol[water]]
+        hbar_a = IdealGasMolarEnthalpy_Air(T, p); // [J/mol[dry air]]
     }
 
     // If the user changes the reference state for water or Air, we need to ensure that the values returned from this 
@@ -946,7 +996,7 @@ double MolarEnthalpy(double T, double p, double psi_w, double vmolar)
     // enthalpy should be and then correct the calculated values for the enthalpy.
 
     hbar = hbar_0+(1-psi_w)*hbar_a+psi_w*hbar_w+R_bar*T*((B_m(T,psi_w)-T*dB_m_dT(T,psi_w))/vmolar+(C_m(T,psi_w)-T/2.0*dC_m_dT(T,psi_w))/(vmolar*vmolar));
-    return hbar; //[J/mol]
+    return hbar; //[J/mol_ha]
 }
 double MolarInternalEnergy(double T, double p, double psi_w, double vmolar)
 {
@@ -983,12 +1033,15 @@ double MassInternalEnergy_per_kgda(double T, double p, double psi_w)
     return h_bar*(1+W)/M_ha; //[J/kg_da]
 }
 
+/**
+ @param T Temperature, in K
+ @param p Pressure (not used)
+ @param psi_w Water mole fraction (mol_w/mol_ha)
+ @param v_bar Mixture molar volume in m^3/mol_ha
+ @returns s_ha Mixture molar entropy on a humid air basis in J/mol_ha/K
+ */
 double MolarEntropy(double T, double p, double psi_w, double v_bar)
 {
-    // In units of J/mol_da/K
-
-    // Serious typo in RP-1485 - should use total pressure rather than
-    // reference pressure in density calculation for water vapor molar entropy
 
     // vbar (molar volume) in m^3/mol
     double x1=0,x2=0,x3=0,y1=0,y2=0,eps=1e-8,f=999,R_bar_Lem=8.314510;
@@ -1038,7 +1091,7 @@ double MolarEntropy(double T, double p, double psi_w, double v_bar)
     else{
         sbar = sbar_0+sbar_a;
     }
-    return sbar; //[kJ/kmol/K]
+    return sbar; //[J/mol_ha/K]
 }
 
 double MassEntropy_per_kgha(double T, double p, double psi_w)
@@ -1216,11 +1269,9 @@ double WetbulbTemperature(double T, double p, double psi_w)
     // Instantiate the solver container class
     WetBulbSolver WBS(T, p, psi_w);
 
-    std::string errstr;
-
     double return_val;
     try{
-        return_val = Brent(WBS,Tmax+1,100, DBL_EPSILON, 1e-12, 50, errstr);
+        return_val = Brent(WBS,Tmax+1,100, DBL_EPSILON, 1e-12, 50);
 
         // Solution obtained is out of range (T>Tmax)
         if (return_val > Tmax + 1) {throw CoolProp::ValueError();}
@@ -1235,9 +1286,9 @@ double WetbulbTemperature(double T, double p, double psi_w)
 
             // Directly solve for the saturated temperature that yields the enthalpy desired
             WetBulbTminSolver WBTS(p,hair_dry);
-            double Tmin = Brent(WBTS,210,Tsat-1,1e-12,1e-12,50,errstr);
+            double Tmin = Brent(WBTS,210,Tsat-1,1e-12,1e-12,50);
 
-            return_val = Brent(WBS,Tmin-30,Tmax-1,1e-12,1e-12,50,errstr);
+            return_val = Brent(WBS,Tmin-30,Tmax-1,1e-12,1e-12,50);
         }
         catch(...)
         {
@@ -1576,9 +1627,19 @@ void _HAPropsSI_inputs(double p, const std::vector<givens> &input_keys, const st
                 T_max = 1000;
             }
             else{
-                // Calculate the saturated humid air water partial pressure;
-                double psi_w_sat = MoleFractionWater(T_min, p, GIVEN_HUMRAT, MainInputValue);
-                //double pp_water_sat = psi_w_sat*p; // partial pressure of water, which is equal to f*p_{w_s}
+                // Convert given humidity ratio to water mole fraction in vapor phase
+                double T_dummy = -1, // Not actually needed
+                       psi_w_sat = MoleFractionWater(T_dummy, p, GIVEN_HUMRAT, MainInputValue);
+                // Partial pressure of water, which is equal to f*p_{w_s}
+                double pp_water_sat = psi_w_sat*p;
+                // Assume unity enhancement factor, calculate guess for dewpoint temperature
+                // for given water phase composition
+                if (pp_water_sat > Water->p_triple()){
+                    T_min = IF97::Tsat97(pp_water_sat);
+                }
+                else{
+                    T_min = 230;
+                }
                 // Iteratively solve for temperature that will give desired pp_water_sat
                 T_min = Secant_Tdb_at_saturated_W(psi_w_sat, p, T_min);
             }
@@ -1643,10 +1704,10 @@ double _HAPropsSI_outputs(givens OutputType, double p, double T, double psi_w)
             return MassInternalEnergy_per_kgha(T,p,psi_w); //[J/kg_ha]
         }
         case GIVEN_ENTROPY:{
-            return MassEntropy_per_kgda(T,p,psi_w); //[J/kg_da/J]
+            return MassEntropy_per_kgda(T,p,psi_w); //[J/kg_da/K]
         }
         case GIVEN_ENTROPY_HA:{
-            return MassEntropy_per_kgha(T,p,psi_w); //[J/kg_ha/J]
+            return MassEntropy_per_kgha(T,p,psi_w); //[J/kg_ha/K]
         }
         case GIVEN_TDP:{
             return DewpointTemperature(T,p,psi_w); //[K]
@@ -1666,45 +1727,32 @@ double _HAPropsSI_outputs(givens OutputType, double p, double T, double psi_w)
         case GIVEN_COND:{
             return Conductivity(T,p,psi_w);
         }
-        case GIVEN_CPHA:{
-            double v_bar1,v_bar2,h_bar1,h_bar2, cp_bar, dT = 1e-3,W;
-            v_bar1=MolarVolume(T-dT,p,psi_w); //[m^3/mol_ha]
-            h_bar1=MolarEnthalpy(T-dT,p,psi_w,v_bar1); //[kJ/kmol_ha]
-            v_bar2=MolarVolume(T+dT,p,psi_w); //[m^3/mol_ha]
-            h_bar2=MolarEnthalpy(T+dT,p,psi_w,v_bar2); //[kJ/kmol_ha]
-            W=HumidityRatio(psi_w); //[kg_w/kg_da]
-            cp_bar = (h_bar2-h_bar1)/(2*dT); //[J/mol_da/K]
-            return cp_bar*(1+W)/M_ha; //[J/kg_ha/K]
-        }
         case GIVEN_CP:{
-            double v_bar1,v_bar2,h_bar1,h_bar2, cp_bar, dT = 1e-3;
-            v_bar1=MolarVolume(T-dT,p,psi_w); //[m^3/mol_ha]
-            h_bar1=MolarEnthalpy(T-dT,p,psi_w,v_bar1); //[kJ/kmol_ha]
-            v_bar2=MolarVolume(T+dT,p,psi_w); //[m^3/mol_ha]
-            h_bar2=MolarEnthalpy(T+dT,p,psi_w,v_bar2); //[kJ/kmol_ha]
-            cp_bar = (h_bar2-h_bar1)/(2*dT); //[J/mol_da/K]
-            return cp_bar/M_ha; //[J/kg_da/K]
+            // [J/kg_ha/K]*[kg_ha/kg_da] because 1+W = kg_ha/kg_da
+            return _HAPropsSI_outputs(GIVEN_CPHA, p, T, psi_w)*(1+HumidityRatio(psi_w));
         }
-        case GIVEN_CVHA:{
-            double v_bar,u_bar1,u_bar2, cv_bar, p_1, p_2, dT = 1e-3,W;
-            v_bar = MolarVolume(T,p,psi_w); //[m^3/mol_ha]
-            p_1 = Pressure(T-dT, v_bar, psi_w);
-            u_bar1=MolarInternalEnergy(T-dT,p_1,psi_w,v_bar); //[J/mol_da]
-            p_2 = Pressure(T+dT, v_bar, psi_w);
-            u_bar2=MolarInternalEnergy(T+dT,p_2,psi_w,v_bar); //[J/mol_da]
-            W=HumidityRatio(psi_w); //[kg_w/kg_da]
-            cv_bar = (u_bar2-u_bar1)/(2*dT); //[J/mol_da/K]
-            return cv_bar*(1+W)/M_ha; //[J/kg_ha/K]
+        case GIVEN_CPHA:{
+            double v_bar1,v_bar2,h_bar1,h_bar2, cp_ha, dT = 1e-3;
+            v_bar1=MolarVolume(T-dT,p,psi_w); //[m^3/mol_ha]
+            h_bar1=MolarEnthalpy(T-dT,p,psi_w,v_bar1); //[J/mol_ha]
+            v_bar2=MolarVolume(T+dT,p,psi_w); //[m^3/mol_ha]
+            h_bar2=MolarEnthalpy(T+dT,p,psi_w,v_bar2); //[J/mol_ha]
+            cp_ha = (h_bar2-h_bar1)/(2*dT); //[J/mol_ha/K]
+            return cp_ha/M_ha; //[J/kg_ha/K]
         }
         case GIVEN_CV:{
+            // [J/kg_ha/K]*[kg_ha/kg_da] because 1+W = kg_ha/kg_da
+            return _HAPropsSI_outputs(GIVEN_CVHA, p, T, psi_w)*(1+HumidityRatio(psi_w));
+        }
+        case GIVEN_CVHA:{
             double v_bar,p_1,p_2,u_bar1,u_bar2, cv_bar, dT = 1e-3;
             v_bar = MolarVolume(T,p,psi_w); //[m^3/mol_ha]
             p_1 = Pressure(T-dT, v_bar, psi_w);
             u_bar1=MolarInternalEnergy(T-dT,p_1,psi_w,v_bar); //[J/mol_ha]
             p_2 = Pressure(T+dT, v_bar, psi_w);
             u_bar2=MolarInternalEnergy(T+dT,p_2,psi_w,v_bar); //[J/mol_ha]
-            cv_bar = (u_bar2-u_bar1)/(2*dT); //[J/mol_da/K]
-            return cv_bar/M_ha; //[J/kg_da/K]
+            cv_bar = (u_bar2-u_bar1)/(2*dT); //[J/mol_ha/K]
+            return cv_bar/M_ha; //[J/kg_ha/K]
         }
         case GIVEN_ISENTROPIC_EXPONENT:{
             CoolPropDbl v_bar, dv = 1e-8, p_1, p_2;
@@ -1986,13 +2034,36 @@ double HAProps_Aux(const char* Name,double T, double p, double W, char *units)
         //}
         else if (!strcmp(Name,"hbaro_w"))
         {
-            v_bar=MolarVolume(T,p,psi_w);
-            return IdealGasMolarEnthalpy_Water(T,v_bar);
+            return IdealGasMolarEnthalpy_Water(T,p);
         }
         else if (!strcmp(Name,"hbaro_a"))
         {
-            v_bar=MolarVolume(T,p,psi_w);
-            return IdealGasMolarEnthalpy_Air(T,v_bar);
+            return IdealGasMolarEnthalpy_Air(T,p);
+        }
+        else if (!strcmp(Name,"h_Ice"))
+        {
+            strcpy(units, "J/kg");
+            return h_Ice(T, p);
+        }
+        else if (!strcmp(Name,"s_Ice"))
+        {
+            strcpy(units, "J/kg/K");
+            return s_Ice(T, p);
+        }
+        else if (!strcmp(Name,"psub_Ice"))
+        {
+            strcpy(units, "Pa");
+            return psub_Ice(T);
+        }
+        else if (!strcmp(Name,"g_Ice"))
+        {
+            strcpy(units, "J/kg");
+            return g_Ice(T, p);
+        }
+        else if (!strcmp(Name,"rho_Ice"))
+        {
+            strcpy(units, "kg/m^3");
+            return rho_Ice(T, p);
         }
         else
         {
@@ -2005,7 +2076,7 @@ double HAProps_Aux(const char* Name,double T, double p, double W, char *units)
 }
 double cair_sat(double T)
 {
-    // Air saturation specific heat
+    // Humid air saturation specific heat at 1 atmosphere.
     // Based on a correlation from EES, good from 250K to 300K.
     // No error bound checking is carried out
     // T: [K]
@@ -2330,22 +2401,3 @@ TEST_CASE("HAPropsSI", "[HAPropsSI]")
  */
 
 #endif /* CATCH_ENABLED */
-
-/// *********************************************************************************
-/// *********************************************************************************
-///                     EMSCRIPTEN (for javascript)
-/// *********************************************************************************
-/// *********************************************************************************
-
-#ifdef EMSCRIPTEN
-
-#include <emscripten/bind.h>
-using namespace emscripten;
-
-// Binding code
-EMSCRIPTEN_BINDINGS(humid_air_bindings) {
-    function("HAPropsSI", &HumidAir::HAPropsSI);
-}
-
-#endif
-

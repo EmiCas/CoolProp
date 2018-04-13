@@ -2,15 +2,35 @@ from libcpp cimport bool
 from libcpp.string cimport string
 
 # A header defining the AbstractState class
-cimport cAbstractState
+from . cimport cAbstractState
 
-from typedefs cimport *
-cimport constants_header
+from .typedefs cimport *
+from . cimport constants_header
+
+#ctypedef fused string_t:
+#    cython.p_char
+#    bytes
+#    unicode
+#    string
+#
+#ctypedef fused string_or_size_t:
+#    string_t
+#    cython.integral
+
+ctypedef fused string_or_size_t:
+    cython.p_char
+    bytes
+    unicode
+    string
+    short
+    int
+    long
 
 cdef class PyPhaseEnvelopeData:
     cpdef public bool TypeI
     cpdef public size_t iTsat_max, ipsat_max, icrit
     cpdef public list T, p, lnT, lnp, rhomolar_liq, rhomolar_vap, lnrhomolar_liq, lnrhomolar_vap, hmolar_liq, hmolar_vap, smolar_liq, smolar_vap, Q
+    cpdef public list x, y, K
     
 cdef class PyGuessesStructure:
     cpdef public double T, p, rhomolar, hmolar, smolar
@@ -19,7 +39,10 @@ cdef class PyGuessesStructure:
 
 cdef class PyCriticalState:
     cpdef public double T, p, rhomolar, hmolar, smolar
-    cpdef public bool stable    
+    cpdef public bool stable
+
+cdef class PySpinodalData:
+    cpdef public vector[double] tau, delta, M1
 
 cdef class AbstractState:
     cdef cAbstractState.AbstractState *thisptr     # hold a C++ instance which we're wrapping
@@ -29,13 +52,18 @@ cdef class AbstractState:
     cpdef set_mass_fractions(self, vector[double] z)
     cpdef set_volu_fractions(self, vector[double] z)
 
-    cpdef set_binary_interaction_double(self, string CAS1, string CAS2, string parameter, double val)
-    cpdef set_binary_interaction_string(self, string CAS1, string CAS2, string parameter, string val)
-    cpdef double get_binary_interaction_double(self, string CAS1, string CAS2, string parameter) except *
+    cpdef set_binary_interaction_double(self, string_or_size_t CAS1, string_or_size_t CAS2, string parameter, double val)
+    cpdef double get_binary_interaction_double(self, string_or_size_t CAS1, string_or_size_t CAS2, string parameter) except *
+    cpdef set_binary_interaction_string(self, string_or_size_t CAS1, string_or_size_t CAS2, string parameter, string val)
     cpdef string get_binary_interaction_string(self, string CAS1, string CAS2, string parameter) except *
+    cpdef apply_simple_mixing_rule(self, size_t, size_t, string)
     
     cpdef name(self)
+    cpdef backend_name(self)
+    cpdef fluid_names(self)
     cpdef fluid_param_string(self, string key)
+    cpdef set_fluid_parameter_double(self, size_t i, string parameter, double value)
+    cpdef double get_fluid_parameter_double(self, size_t i, string parameter) except *
     cpdef change_EOS(self, size_t, string)
     
     cpdef constants_header.phases phase(self) except *  
@@ -54,6 +82,11 @@ cdef class AbstractState:
     cpdef double rhomolar_critical(self) except *
     cpdef double p_critical(self) except *
     cpdef list all_critical_points(self)
+    cpdef tuple criticality_contour_values(self)
+
+    ## Spinodal curve(s)
+    cpdef build_spinodal(self)
+    cpdef PySpinodalData get_spinodal_data(self)
     
     ## Reducing point
     cpdef double T_reducing(self) except *
@@ -84,6 +117,10 @@ cdef class AbstractState:
     cpdef double cpmass(self) except *
     cpdef double cp0mass(self) except *
     cpdef double cvmass(self) except *
+    cpdef double gibbsmass(self) except *
+    cpdef double gibbsmolar(self) except *
+    cpdef double helmholtzmass(self) except *
+    cpdef double helmholtzmolar(self) except *
     cpdef double speed_sound(self) except *
     cpdef double gas_constant(self) except *
     cpdef double tau(self) except *
@@ -98,14 +135,34 @@ cdef class AbstractState:
     cpdef double Bvirial(self) except *
     cpdef double Cvirial(self) except *
     cpdef double PIP(self) except *
+    cpdef double fundamental_derivative_of_gas_dynamics(self) except *
     cpdef double isothermal_compressibility(self) except *
     cpdef double isobaric_expansion_coefficient(self) except *
     cpdef double fugacity(self, size_t) except *
     cpdef double fugacity_coefficient(self, size_t) except *
+    cpdef double chemical_potential(self, size_t) except *
+
+    cpdef double gibbsmolar_excess(self) except *
+    cpdef double gibbsmass_excess(self) except *
+    cpdef double hmolar_excess(self) except *
+    cpdef double hmass_excess(self) except *
+    cpdef double smolar_excess(self) except *
+    cpdef double smass_excess(self) except *
+    cpdef double umolar_excess(self) except *
+    cpdef double umass_excess(self) except *
+    cpdef double volumemolar_excess(self) except *
+    cpdef double volumemass_excess(self) except *
+    cpdef double helmholtzmolar_excess(self) except *
+    cpdef double helmholtzmass_excess(self) except *
+
+    
+
+
     
     cpdef double molar_mass(self) except *
     cpdef double acentric_factor(self) except*
     cpdef tuple true_critical_point(self)
+    cpdef double get_fluid_constant(self,size_t,constants_header.parameters) except*
     cpdef double keyed_output(self, constants_header.parameters) except *
     cpdef double trivial_keyed_output(self, constants_header.parameters) except *
     cpdef double saturated_liquid_keyed_output(self, constants_header.parameters) except *
@@ -159,3 +216,9 @@ cdef class AbstractState:
     cpdef CoolPropDbl d3alphar_dDelta2_dTau(self) except *
     cpdef CoolPropDbl d3alphar_dDelta_dTau2(self) except *
     cpdef CoolPropDbl d3alphar_dTau3(self) except *
+    cpdef CoolPropDbl d4alphar_dDelta4(self) except *
+    cpdef CoolPropDbl d4alphar_dDelta3_dTau(self) except *
+    cpdef CoolPropDbl d4alphar_dDelta2_dTau2(self) except *
+    cpdef CoolPropDbl d4alphar_dDelta_dTau3(self) except *
+    cpdef CoolPropDbl d4alphar_dTau4(self) except *
+

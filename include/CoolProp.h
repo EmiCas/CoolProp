@@ -18,6 +18,7 @@ You might want to start by looking at CoolProp.h
 
     #include <string>
     #include <vector>
+    #include "DataStructures.h"
 
     namespace CoolProp {
 
@@ -117,6 +118,14 @@ You might want to start by looking at CoolProp.h
      */
     bool is_valid_fluid_string(const std::string &fluidstring);
     
+    /** \brief Add fluids as a JSON-formatted string
+     *
+     * @param backend The backend to which these should be added; e.g. "HEOS", "SRK", "PR"
+     * @returns output Returns true if the fluids were able to be added
+     *
+     */
+    bool add_fluids_as_JSON(const std::string &backend, const std::string &fluidstring);
+    
     /** 
     \brief Set the reference state based on a string representation
     
@@ -142,10 +151,10 @@ You might want to start by looking at CoolProp.h
     /// Set the reference state based on a thermodynamic state point specified by temperature and molar density
     /// @param FluidName The name of the fluid
     /// @param T Temperature at reference state [K]
-    /// @param rhomolar Density at reference state [mol/m^3]
-    /// @param h0 Enthalpy at reference state [J/mol]
-    /// @param s0 Entropy at references state [J/mol/K]
-    void set_reference_stateD(const std::string &FluidName, double T, double rhomolar, double h0, double s0);
+    /// @param rhomolar Molar density at reference state [mol/m^3]
+    /// @param hmolar0 Molar enthalpy at reference state [J/mol]
+    /// @param smolar0 Molar entropy at reference state [J/mol/K]
+    void set_reference_stateD(const std::string &FluidName, double T, double rhomolar, double hmolar0, double smolar0);
     
     /// Return a string representation of the phase
     /// @param Name1 The first state variable name, one of "T","D","H",etc.
@@ -171,6 +180,11 @@ You might want to start by looking at CoolProp.h
      * @return The fluids, as a '&' delimited string
      */
     std::string extract_fractions(const std::string &fluid_string, std::vector<double> &fractions);
+
+    /// An internal function to extract the phase string, given the phase index;
+    /// Handy for printing the actual phase string in debug, warning, and error messages.
+    /// @param Phase The enumerated phase index to be looked up
+    std::string phase_lookup_string(phases Phase);
     
     } /* namespace CoolProp */
 #endif

@@ -1,8 +1,4 @@
 {
-  "ALIASES": [
-    "METHYLLINOLEATE", 
-    "MLINOLEA"
-  ], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -182,18 +178,6 @@
       ]
     }
   }, 
-  "CAS": "112-63-0", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "UNKNOWN", 
-    "FH": -1, 
-    "GWP100": -1.0, 
-    "GWP20": -1.0, 
-    "GWP500": -1.0, 
-    "HH": -1, 
-    "Name": "MethylLinoleate", 
-    "ODP": -1.0, 
-    "PH": -1
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
@@ -228,7 +212,7 @@
           "T_units": "K", 
           "hmolar": -271645.1120411698, 
           "hmolar_units": "J/mol", 
-          "p": 1.2507966607425276e-06, 
+          "p": 1.3112507347084836e-06, 
           "p_units": "Pa", 
           "rhomolar": 3092.919060951428, 
           "rhomolar_units": "mol/m^3", 
@@ -240,7 +224,7 @@
           "T_units": "K", 
           "hmolar": -153501.22660120585, 
           "hmolar_units": "J/mol", 
-          "p": 1.3717048086744398e-06, 
+          "p": 1.3112507347084836e-06, 
           "p_units": "Pa", 
           "rhomolar": 6.345306984937437e-10, 
           "rhomolar_units": "mol/m^3", 
@@ -248,7 +232,7 @@
           "smolar_units": "J/mol/K"
         }
       }, 
-      "T_max": 700, 
+      "T_max": 1000, 
       "T_max_units": "K", 
       "Ttriple": 238.1, 
       "Ttriple_units": "K", 
@@ -391,9 +375,32 @@
       "pseudo_pure": false
     }
   ], 
-  "FORMULA": "C_{19}H_{34}O_{2}", 
-  "NAME": "MethylLinoleate", 
-  "REFPROP_NAME": "MLINOLEA", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=4447491", 
+    "ALIASES": [
+      "METHYLLINOLEATE", 
+      "MLINOLEA"
+    ], 
+    "CAS": "112-63-0", 
+    "CHEMSPIDER_ID": 4447491, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "UNKNOWN", 
+      "FH": -1, 
+      "GWP100": -1.0, 
+      "GWP20": -1.0, 
+      "GWP500": -1.0, 
+      "HH": -1, 
+      "Name": "MethylLinoleate", 
+      "ODP": -1.0, 
+      "PH": -1
+    }, 
+    "FORMULA": "C_{19}H_{34}O_{2}", 
+    "INCHI_KEY": "WTTJVINHCBCLGX-NQLNTKRDBF", 
+    "INCHI_STRING": "InChI=1/C19H34O2/c1-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18-19(20)21-2/h7-8,10-11H,3-6,9,12-18H2,1-2H3/b8-7-,11-10-", 
+    "NAME": "MethylLinoleate", 
+    "REFPROP_NAME": "MLINOLEA", 
+    "SMILES": "CCCCC/C=C\\C/C=C\\CCCCCCCC(=O)OC"
+  }, 
   "STATES": {
     "critical": {
       "T": 799.0, 
@@ -412,7 +419,7 @@
       "T_units": "K", 
       "hmolar": -271645.1120411698, 
       "hmolar_units": "J/mol", 
-      "p": 1.2507966607425276e-06, 
+      "p": 1.3112507347084836e-06, 
       "p_units": "Pa", 
       "rhomolar": 3092.919060951428, 
       "rhomolar_units": "mol/m^3", 
@@ -424,7 +431,7 @@
       "T_units": "K", 
       "hmolar": -153501.22660120585, 
       "hmolar_units": "J/mol", 
-      "p": 1.3717048086744398e-06, 
+      "p": 1.3112507347084836e-06, 
       "p_units": "Pa", 
       "rhomolar": 6.345306984937437e-10, 
       "rhomolar_units": "mol/m^3", 

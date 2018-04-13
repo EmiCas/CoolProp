@@ -1,10 +1,4 @@
 {
-  "ALIASES": [
-    "R1234ZE", 
-    "R1234ZEE", 
-    "R1234zeE", 
-    "R1234ZE(E)"
-  ], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -186,22 +180,10 @@
       ]
     }
   }, 
-  "CAS": "29118-24-9", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "UNKNOWN", 
-    "FH": 2, 
-    "GWP100": 6.0, 
-    "GWP20": -1.0, 
-    "GWP500": -1.0, 
-    "HH": 1, 
-    "Name": "R1234ze(E)", 
-    "ODP": -1.0, 
-    "PH": 0
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
-      "BibTeX_EOS": "Thol-REFPROP-9.1", 
+      "BibTeX_EOS": "Thol-IJT-2016-R1234zeE,Thol-REFPROP-9.1", 
       "STATES": {
         "hs_anchor": {
           "T": 420.772, 
@@ -232,7 +214,7 @@
           "T_units": "K", 
           "hmolar": 7924.346258807971, 
           "hmolar_units": "J/mol", 
-          "p": 218.58002006119958, 
+          "p": 218.58002181736742, 
           "p_units": "Pa", 
           "rhomolar": 13255.963364087442, 
           "rhomolar_units": "mol/m^3", 
@@ -244,7 +226,7 @@
           "T_units": "K", 
           "hmolar": 35568.53199294639, 
           "hmolar_units": "J/mol", 
-          "p": 218.58168438177242, 
+          "p": 218.58002181736742, 
           "p_units": "Pa", 
           "rhomolar": 0.15595998598761723, 
           "rhomolar_units": "mol/m^3", 
@@ -620,8 +602,34 @@
       "pseudo_pure": false
     }
   ], 
-  "NAME": "R1234ze(E)", 
-  "REFPROP_NAME": "R1234ZE", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=4647426", 
+    "ALIASES": [
+      "R1234ZE", 
+      "R1234ZEE", 
+      "R1234zeE", 
+      "R1234ZE(E)"
+    ], 
+    "CAS": "29118-24-9", 
+    "CHEMSPIDER_ID": 4647426, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "UNKNOWN", 
+      "FH": 2, 
+      "GWP100": 6.0, 
+      "GWP20": -1.0, 
+      "GWP500": -1.0, 
+      "HH": 1, 
+      "Name": "R1234ze(E)", 
+      "ODP": -1.0, 
+      "PH": 0
+    }, 
+    "FORMULA": "C_{3}F_{4}H_{2}",
+    "INCHI_KEY": "CDOOAUSHHFGWSA-OWOJBTEDBQ", 
+    "INCHI_STRING": "InChI=1/C3H2F4/c4-2-1-3(5,6)7/h1-2H/b2-1+", 
+    "NAME": "R1234ze(E)", 
+    "REFPROP_NAME": "R1234ZE", 
+    "SMILES": "C(=C/F)\\C(F)(F)F"
+  }, 
   "STATES": {
     "critical": {
       "T": 382.52, 
@@ -640,7 +648,7 @@
       "T_units": "K", 
       "hmolar": 7924.346258807971, 
       "hmolar_units": "J/mol", 
-      "p": 218.58002006119958, 
+      "p": 218.58002181736742, 
       "p_units": "Pa", 
       "rhomolar": 13255.963364087442, 
       "rhomolar_units": "mol/m^3", 
@@ -652,7 +660,7 @@
       "T_units": "K", 
       "hmolar": 35568.53199294639, 
       "hmolar_units": "J/mol", 
-      "p": 218.58168438177242, 
+      "p": 218.58002181736742, 
       "p_units": "Pa", 
       "rhomolar": 0.15595998598761723, 
       "rhomolar_units": "mol/m^3", 
@@ -736,29 +744,50 @@
         "type": "polynomial"
       }
     }, 
-    "viscosity": {
-      "BibTeX": "BELL-PERSONAL-2015", 
-      "_note": "Fit based on the data of Zhao, JCED, 2014: doi: 10.1021/je5001457", 
-      "epsilon_over_k": 292.11, 
-      "epsilon_over_k_units": "K", 
-      "psi": {
-        "a": [
-          0.72309634, 
-          0.2235595, 
-          -0.04217
+    "viscosity": [
+      {
+        "BibTeX": "Bell-PURDUE-2016-ETA", 
+        "C": 0.91012, 
+        "c_liq": [
+          0.6100913843, 
+          0.4508958312, 
+          -0.017063, 
+          0.000564
         ], 
-        "rhomolar_reducing": 4290, 
-        "rhomolar_reducing_units": "mol/m^3", 
-        "t": [
-          0, 
-          1, 
-          2
-        ]
+        "c_vap": [
+          0.0, 
+          1.2, 
+          -0.308598, 
+          0.035317
+        ], 
+        "rhosr_critical": -58081.52496563628, 
+        "type": "rhosr-CS", 
+        "x_crossover": 2
       }, 
-      "reference_fluid": "R134a", 
-      "sigma_eta": 5.017e-10, 
-      "sigma_eta_units": "m", 
-      "type": "ECS"
-    }
+      {
+        "BibTeX": "BELL-PERSONAL-2015", 
+        "_note": "Fit based on the data of Zhao, JCED, 2014: doi: 10.1021/je5001457", 
+        "epsilon_over_k": 292.11, 
+        "epsilon_over_k_units": "K", 
+        "psi": {
+          "a": [
+            0.72309634, 
+            0.2235595, 
+            -0.04217
+          ], 
+          "rhomolar_reducing": 4290, 
+          "rhomolar_reducing_units": "mol/m^3", 
+          "t": [
+            0, 
+            1, 
+            2
+          ]
+        }, 
+        "reference_fluid": "R134a", 
+        "sigma_eta": 5.017e-10, 
+        "sigma_eta_units": "m", 
+        "type": "ECS"
+      }
+    ]
   }
 }

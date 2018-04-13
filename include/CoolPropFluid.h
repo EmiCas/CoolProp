@@ -267,6 +267,10 @@ struct ViscosityHigherOrderVariables
     ViscosityHigherOrderVariables(){type = VISCOSITY_HIGHER_ORDER_NOT_SET;};
 };
 
+struct ViscosityRhoSrVariables{
+    std::vector<double> c_liq, c_vap;
+    double C, x_crossover, rhosr_critical;
+};
 struct ViscosityECSVariables{
     std::string reference_fluid;
     CoolPropDbl psi_rhomolar_reducing;
@@ -284,6 +288,9 @@ public:
                               VISCOSITY_HARDCODED_HELIUM, ///< Use \ref TransportRoutines::viscosity_helium_hardcoded
                               VISCOSITY_HARDCODED_R23, ///< Use \ref TransportRoutines::viscosity_R23_hardcoded
                               VISCOSITY_HARDCODED_METHANOL, ///< Use \ref TransportRoutines::viscosity_methanol_hardcoded
+                              VISCOSITY_HARDCODED_M_XYLENE, ///< Use \ref TransportRoutines::viscosity_m_xylene_hardcoded
+                              VISCOSITY_HARDCODED_O_XYLENE, ///< Use \ref TransportRoutines::viscosity_o_xylene_hardcoded
+                              VISCOSITY_HARDCODED_P_XYLENE, ///< Use \ref TransportRoutines::viscosity_p_xylene_hardcoded
                               VISCOSITY_NOT_HARDCODED
                               };
     enum ConductivityHardcodedEnum {
@@ -298,6 +305,7 @@ public:
     ViscosityInitialDensityVariables viscosity_initial;
     ViscosityHigherOrderVariables viscosity_higher_order;
     ViscosityECSVariables viscosity_ecs;
+    ViscosityRhoSrVariables viscosity_rhosr;
     ViscosityChungData viscosity_Chung;
 
     ConductivityDiluteVariables conductivity_dilute;
@@ -310,6 +318,7 @@ public:
     bool viscosity_using_ECS; ///< A flag for whether to use extended corresponding states for viscosity.  False for no
     bool conductivity_using_ECS; ///< A flag for whether to use extended corresponding states for conductivity.  False for no
     bool viscosity_using_Chung; ///< A flag for whether to use Chung model. False for no
+    bool viscosity_using_rhosr; ///< A flag for whether to use rho*sr CS model of Bell. False for no
 	bool viscosity_model_provided; ///< A flag for whether viscosity model is provided.  False for no
     bool conductivity_model_provided; ///< A flag for whether thermal conductivity model is provided.  False for no
     CoolPropDbl sigma_eta, ///< The Lennard-Jones 12-6 \f$ \sigma \f$ parameter
@@ -319,6 +328,7 @@ public:
     TransportPropertyData():viscosity_using_ECS(false),
                             conductivity_using_ECS(false),
                             viscosity_using_Chung(false),
+                            viscosity_using_rhosr(false),
                             viscosity_model_provided(false),
                             conductivity_model_provided(false),
                             sigma_eta(_HUGE),epsilon_over_k(_HUGE),
@@ -469,7 +479,7 @@ class CoolPropFluid {
         std::string ECSReferenceFluid; ///< A string that gives the name of the fluids that should be used for the ECS method for transport properties
         double ECS_qd; ///< The critical qd parameter for the Olchowy-Sengers cross-over term
     public:
-        CoolPropFluid():ECS_qd(-_HUGE){};
+        CoolPropFluid() :ECS_qd(-_HUGE) { this->ChemSpider_id = -1; };
         ~CoolPropFluid(){};
 		const EquationOfState &EOS() const {return EOSVector[0];} ///< Get a reference to the equation of state
 		EquationOfState &EOS() {return EOSVector[0];} ///< Get a reference to the equation of state
@@ -480,8 +490,13 @@ class CoolPropFluid {
         std::string CAS; ///< The CAS number of the fluid
         std::string formula; ///< The chemical formula, in LaTeX form
         std::vector <std::string> aliases; ///< A vector of aliases of names for the fluid
+        std::string InChI; ///< The InChI string for the fluid
+        std::string InChIKey; ///< The InChI key for the fluid
+        std::string smiles; ///< The SMILES identifier for the fluid
+        int ChemSpider_id; ///< The ChemSpider identifier for the fluid
+        std::string TwoDPNG_URL; ///< The URL to a 2D representation of the molecule (from ChemSpider)
 
-        BibTeXKeysStruct BibTeXKeys; ///< The BibTeX keys associated 
+        BibTeXKeysStruct BibTeXKeys; ///< The BibTeX keys associated
         EnvironmentalFactorsStruct environment; ///< The environmental variables for global warming potential, ODP, etc.
         Ancillaries ancillaries; ///< The set of ancillary equations for dewpoint, bubblepoint, surface tension, etc.
         TransportPropertyData transport;

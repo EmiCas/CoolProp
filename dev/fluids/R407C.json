@@ -1,7 +1,4 @@
 {
-  "ALIASES": [
-    "R407c"
-  ], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -199,18 +196,6 @@
       ]
     }
   }, 
-  "CAS": "R407C.PPF", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "A1", 
-    "FH": 1, 
-    "GWP100": 1800.0, 
-    "GWP20": -1.0, 
-    "GWP500": -1.0, 
-    "HH": 1, 
-    "Name": "R407C", 
-    "ODP": -1.0, 
-    "PH": 0
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
@@ -289,7 +274,7 @@
           "smolar_units": "J/mol/K"
         }
       }, 
-      "T_max": 450, 
+      "T_max": 500, 
       "T_max_units": "K", 
       "Ttriple": 200, 
       "Ttriple_units": "K", 
@@ -434,8 +419,25 @@
       "pseudo_pure": true
     }
   ], 
-  "NAME": "R407C", 
-  "REFPROP_NAME": "R407C", 
+  "INFO": {
+    "ALIASES": [
+      "R407c"
+    ], 
+    "CAS": "R407C.PPF", 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "A1", 
+      "FH": 1, 
+      "GWP100": 1800.0, 
+      "GWP20": -1.0, 
+      "GWP500": -1.0, 
+      "HH": 1, 
+      "Name": "R407C", 
+      "ODP": -1.0, 
+      "PH": 0
+    }, 
+    "NAME": "R407C", 
+    "REFPROP_NAME": "R407C"
+  }, 
   "STATES": {
     "critical": {
       "T": 359.345, 

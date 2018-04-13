@@ -1,8 +1,4 @@
 {
-  "ALIASES": [
-    "SULFURHEXAFLUORIDE", 
-    "SF6"
-  ], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -184,18 +180,6 @@
       ]
     }
   }, 
-  "CAS": "2551-62-4", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "UNKNOWN", 
-    "FH": 0, 
-    "GWP100": 22800.0, 
-    "GWP20": 16300.0, 
-    "GWP500": 32600.0, 
-    "HH": 1, 
-    "Name": "SulfurHexafluoride", 
-    "ODP": -1.0, 
-    "PH": 0
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
@@ -230,7 +214,7 @@
           "T_units": "K", 
           "hmolar": 22502.979510149802, 
           "hmolar_units": "J/mol", 
-          "p": 231424.4772459795, 
+          "p": 231424.47395150535, 
           "p_units": "Pa", 
           "rhomolar": 12632.389958337973, 
           "rhomolar_units": "mol/m^3", 
@@ -242,7 +226,7 @@
           "T_units": "K", 
           "hmolar": 38659.1001242935, 
           "hmolar_units": "J/mol", 
-          "p": 231425.42631345996, 
+          "p": 231424.47395150535, 
           "p_units": "Pa", 
           "rhomolar": 133.92420986345334, 
           "rhomolar_units": "mol/m^3", 
@@ -250,7 +234,7 @@
           "smolar_units": "J/mol/K"
         }
       }, 
-      "T_max": 650, 
+      "T_max": 625, 
       "T_max_units": "K", 
       "Ttriple": 223.555, 
       "Ttriple_units": "K", 
@@ -511,9 +495,32 @@
       "pseudo_pure": false
     }
   ], 
-  "FORMULA": "F_{6}S_{1}", 
-  "NAME": "SulfurHexafluoride", 
-  "REFPROP_NAME": "SF6", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=16425", 
+    "ALIASES": [
+      "SULFURHEXAFLUORIDE", 
+      "SF6"
+    ], 
+    "CAS": "2551-62-4", 
+    "CHEMSPIDER_ID": 16425, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "UNKNOWN", 
+      "FH": 0, 
+      "GWP100": 22800.0, 
+      "GWP20": 16300.0, 
+      "GWP500": 32600.0, 
+      "HH": 1, 
+      "Name": "SulfurHexafluoride", 
+      "ODP": -1.0, 
+      "PH": 0
+    }, 
+    "FORMULA": "F_{6}S_{1}", 
+    "INCHI_KEY": "SFZCNBIFKDRMGX-UHFFFAOYAF", 
+    "INCHI_STRING": "InChI=1/F6S/c1-7(2,3,4,5)6", 
+    "NAME": "SulfurHexafluoride", 
+    "REFPROP_NAME": "SF6", 
+    "SMILES": "FS(F)(F)(F)(F)F"
+  }, 
   "STATES": {
     "critical": {
       "T": 318.7232, 
@@ -532,7 +539,7 @@
       "T_units": "K", 
       "hmolar": 22502.979510149802, 
       "hmolar_units": "J/mol", 
-      "p": 231424.4772459795, 
+      "p": 231424.47395150535, 
       "p_units": "Pa", 
       "rhomolar": 12632.389958337973, 
       "rhomolar_units": "mol/m^3", 
@@ -544,7 +551,7 @@
       "T_units": "K", 
       "hmolar": 38659.1001242935, 
       "hmolar_units": "J/mol", 
-      "p": 231425.42631345996, 
+      "p": 231424.47395150535, 
       "p_units": "Pa", 
       "rhomolar": 133.92420986345334, 
       "rhomolar_units": "mol/m^3", 

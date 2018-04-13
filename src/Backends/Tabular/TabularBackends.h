@@ -9,9 +9,7 @@
 #include "CoolProp.h"
 #include <sstream>
 #include "Configuration.h"
-#include "../Helmholtz/PhaseEnvelopeRoutines.h"
-
-
+#include "Backends/Helmholtz/PhaseEnvelopeRoutines.h"
 
 /** ***MAGIC WARNING***!! X Macros in use
  * See http://stackoverflow.com/a/148610
@@ -27,23 +25,112 @@
 
 namespace CoolProp{
 
+class PackablePhaseEnvelopeData : public PhaseEnvelopeData
+{
+   
+public:
+    int revision;
+    
+    PackablePhaseEnvelopeData() : revision(0) {} ;
+
+    void copy_from_nonpackable(const PhaseEnvelopeData &PED) {
+        /* Use X macros to auto-generate the copying */
+        #define X(name) name = PED.name;
+        PHASE_ENVELOPE_VECTORS
+        #undef X
+        /* Use X macros to auto-generate the copying */
+        #define X(name) name = PED.name;
+        PHASE_ENVELOPE_MATRICES
+        #undef X
+    };
+
+    std::map<std::string, std::vector<double> > vectors;
+    std::map<std::string, std::vector<std::vector<double> > > matrices;
+    
+    MSGPACK_DEFINE(revision, vectors, matrices); // write the member variables that you want to pack using msgpack
+
+    /// Take all the vectors that are in the class and pack them into the vectors map for easy unpacking using msgpack
+    void pack(){
+        /* Use X macros to auto-generate the packing code; each will look something like: matrices.insert(std::pair<std::string, std::vector<double> >("T", T)); */
+        #define X(name) vectors.insert(std::pair<std::string, std::vector<double> >(#name, name));
+        PHASE_ENVELOPE_VECTORS
+        #undef X
+        /* Use X macros to auto-generate the packing code; each will look something like: matrices.insert(std::pair<std::string, std::vector<std::vector<CoolPropDbl> > >("T", T)); */
+        #define X(name) matrices.insert(std::pair<std::string, std::vector<std::vector<double> > >(#name, name));
+        PHASE_ENVELOPE_MATRICES
+        #undef X
+    };
+    std::map<std::string, std::vector<double> >::iterator get_vector_iterator(const std::string &name){
+        std::map<std::string, std::vector<double> >::iterator it = vectors.find(name);
+        if (it == vectors.end()){
+            throw UnableToLoadError(format("could not find vector %s",name.c_str()));
+        }
+        return it;
+    }
+    std::map<std::string, std::vector<std::vector<double> > >::iterator get_matrix_iterator(const std::string &name){
+        std::map<std::string, std::vector<std::vector<double> > >::iterator it = matrices.find(name);
+        if (it == matrices.end()){
+            throw UnableToLoadError(format("could not find matrix %s", name.c_str()));
+        }
+        return it;
+    }
+    /// Take all the vectors that are in the class and unpack them from the vectors map
+    void unpack(){
+        /* Use X macros to auto-generate the unpacking code; 
+         * each will look something like: T = get_vector_iterator("T")->second 
+         */
+        #define X(name) name = get_vector_iterator(#name)->second;
+        PHASE_ENVELOPE_VECTORS
+        #undef X
+        /* Use X macros to auto-generate the unpacking code; 
+         * each will look something like: T = get_matrix_iterator("T")->second 
+         **/
+        #define X(name) name = get_matrix_iterator(#name)->second;
+        PHASE_ENVELOPE_MATRICES
+        #undef X
+        // Find the index of the point with the highest temperature
+        iTsat_max = std::distance(T.begin(), std::max_element(T.begin(), T.end()));
+        // Find the index of the point with the highest pressure
+        ipsat_max = std::distance(p.begin(), std::max_element(p.begin(), p.end()));
+    };
+    void deserialize(msgpack::object &deserialized){       
+        PackablePhaseEnvelopeData temp;
+        deserialized.convert(temp);
+        temp.unpack();
+        if (revision > temp.revision){
+            throw ValueError(format("loaded revision [%d] is older than current revision [%d]", temp.revision, revision));
+        }
+        std::swap(*this, temp); // Swap if successful
+    };
+};
+
 /// Get a conversion factor from mass to molar if needed
 inline void mass_to_molar(parameters &param, double &conversion_factor, double molar_mass){
-    switch(param){
+    conversion_factor = 1.0;
+    switch (param){
         case iDmass: conversion_factor = molar_mass; param = iDmolar; break;
-        case iHmass: conversion_factor = 1/molar_mass; param = iHmolar; break;
-        case iSmass: conversion_factor = 1/molar_mass; param = iSmolar; break;
-        case iUmass: conversion_factor = 1/molar_mass; param = iUmolar; break;
+        case iHmass: conversion_factor /= molar_mass; param = iHmolar; break;
+        case iSmass: conversion_factor /= molar_mass; param = iSmolar; break;
+        case iUmass: conversion_factor /= molar_mass; param = iUmolar; break;
+        case iCvmass: conversion_factor /= molar_mass; param = iCvmolar; break;
+        case iCpmass: conversion_factor /= molar_mass; param = iCpmolar; break;
         case iDmolar:
         case iHmolar:
         case iSmolar:
         case iUmolar:
+        case iCvmolar:
+        case iCpmolar:
         case iT:
         case iP:
+        case ispeed_sound:
+        case iisothermal_compressibility:
+        case iisobaric_expansion_coefficient:
+        case iviscosity:
+        case iconductivity:
             return;
         default:
-            throw ValueError("I don't know how to convert this parameter");
-    }
+            throw ValueError("TabularBackends::mass_to_molar - I don't know how to convert this parameter");
+        }
 }
 
 /** \brief This class holds the data for a two-phase table that is log spaced in p
@@ -203,7 +290,7 @@ class PureFluidSaturationTableData{
 		};
         void deserialize(msgpack::object &deserialized){       
             PureFluidSaturationTableData temp;
-            deserialized.convert(&temp);
+            deserialized.convert(temp);
             temp.unpack();
             if (N != temp.N)
             {
@@ -572,7 +659,7 @@ class LogPHTable : public SinglePhaseGriddedTableData
         }
         void deserialize(msgpack::object &deserialized){       
             LogPHTable temp;
-            deserialized.convert(&temp);
+            deserialized.convert(temp);
             temp.unpack();
             if (Nx != temp.Nx || Ny != temp.Ny)
             {
@@ -612,7 +699,7 @@ class LogPTTable : public SinglePhaseGriddedTableData
         }
         void deserialize(msgpack::object &deserialized){   
             LogPTTable temp;
-            deserialized.convert(&temp);
+            deserialized.convert(temp);
             temp.unpack();
             if (Nx != temp.Nx || Ny != temp.Ny)
             {
@@ -703,7 +790,7 @@ public:
     LogPHTable single_phase_logph;
     LogPTTable single_phase_logpT;
     PureFluidSaturationTableData pure_saturation;
-    PhaseEnvelopeData phase_envelope;
+    PackablePhaseEnvelopeData phase_envelope;
     std::vector<std::vector<CellCoeffs> > coeffs_ph, coeffs_pT;
 
     TabularDataSet(){ tables_loaded = false; }
@@ -778,6 +865,9 @@ class TabularBackend : public AbstractState
 
         // None of the tabular methods are available from the high-level interface
         bool available_in_high_level(void){return false;}
+    
+        std::string calc_name(void){ return AS->name(); }
+        std::vector<std::string> calc_fluid_names(void){ return AS->fluid_names(); }
 
         void connect_pointers(parameters output, const SinglePhaseGriddedTableData &table)
 		{
@@ -900,7 +990,7 @@ class TabularBackend : public AbstractState
         /// Load the tables from file; throws UnableToLoadException if there is a problem
         void load_tables();
         void pack_matrices(){
-            PhaseEnvelopeData & phase_envelope = dataset->phase_envelope;
+            PackablePhaseEnvelopeData & phase_envelope = dataset->phase_envelope;
             PureFluidSaturationTableData &pure_saturation = dataset->pure_saturation;
             SinglePhaseGriddedTableData &single_phase_logph = dataset->single_phase_logph;
             SinglePhaseGriddedTableData &single_phase_logpT = dataset->single_phase_logpT;
@@ -946,6 +1036,9 @@ class TabularBackend : public AbstractState
         CoolPropDbl calc_first_saturation_deriv(parameters Of1, parameters Wrt1);
         CoolPropDbl calc_first_two_phase_deriv(parameters Of, parameters Wrt, parameters Constant);
 
+		/// If you need all three values (drho_dh__p, drho_dp__h and rho_spline), you should calculate drho_dp__h first to avoid duplicate calculations.
+		CoolPropDbl calc_first_two_phase_deriv_splined(parameters Of, parameters Wrt, parameters Constant, CoolPropDbl x_end);
+		
         void check_tables(){
             if (!tables_loaded){
                 try{

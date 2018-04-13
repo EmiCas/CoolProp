@@ -17,6 +17,14 @@ If you dare, you can also try the latest nightly release from :sfnightly:`Python
 or get it directly from the development server using::
 
     pip install -vvv --pre --trusted-host www.coolprop.dreamhosters.com --find-links http://www.coolprop.dreamhosters.com/binaries/Python/ -U --force-reinstall CoolProp
+    
+.. For those of you who prefer the Anaconda or Miniconda distributions, you can run::
+   
+       conda install -c https://conda.binstar.org/coolprop coolprop
+       
+   You can also find our nightly development snapshots on binstar::
+    
+       conda install -c https://conda.binstar.org/coolprop/label/dev coolprop 
 
 
 Manual installation
@@ -43,6 +51,18 @@ executable), simply use this version of python to execute the ``setup.py``
 script::
 
     sudo python2.7 setup.py install
+
+If you have multiple versions of Visual Studio installed and need to specify the version to use and choice of 32-bit or 64-bit compilation, you can use::
+
+    # 64-bit using VS2008 on Pytnon 2.7
+    sudo python setup.py install --cmake-compiler vc9 --cmake-bitness 64
+
+or, equivalently::
+
+    sudo python setup.py install cmake=vc9,64
+
+Omitting the cmake options will use the default (latest) compiler on the machine.
+
 
 Local installation
 ------------------
@@ -94,12 +114,12 @@ Once installed, you can use CoolProp for various things:
 * Get some nice graphs::
 
     import CoolProp.Plots as CPP
-    ph_plot = CPP.PropsPlot('Water','Ph')
+    ph_plot = CPP.PropertyPlot('Water','Ph')
     ph_plot.savefig('enthalpy_pressure_graph_for_Water.png')
 
 * Solve `thermodynamics exercices`_
 
-* Make you own `more complex graphs`_ if you feel the graphing interface is lacking something
+* Make your own `more complex graphs`_ if you feel the graphing interface is lacking something
 
 * Make even more complex graphs using `3D stuff`_
 

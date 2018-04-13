@@ -78,6 +78,240 @@ void JSONFluidLibrary::set_fluid_enthalpy_entropy_offset(const std::string &flui
     }
 }
     
+/// Add all the fluid entries in the JSON-encoded string passed in
+void JSONFluidLibrary::add_many(const std::string &JSON_string){
+    
+    // First load all the baseline fluids
+    if (library.is_empty()){ load(); }
+    
+    // Then, load the fluids we would like to add
+    rapidjson::Document doc;
+    cpjson::JSON_string_to_rapidjson(JSON_string, doc);
+    library.add_many(doc);
+};
+    
+void JSONFluidLibrary::add_many(rapidjson::Value &listing)
+{
+    for (rapidjson::Value::ValueIterator itr = listing.Begin(); itr != listing.End(); ++itr)
+    {
+        add_one(*itr);
+    }
+};
+    
+void JSONFluidLibrary::add_one(rapidjson::Value &fluid_json)
+{
+    _is_empty = false;
+    
+    // The variable index is initialized to the size of the fluid_map.
+    // Since the first fluid_map key equals zero (0), index is initialized to the key
+    // value for the next fluid to be added. (e.g. fluid_map[0..140]; index = 141 )
+    std::size_t index = fluid_map.size();
+    
+    CoolPropFluid fluid;     // create a new CoolPropFluid object
+    
+    // Assign the fluid properties based on the passed in fluid_json
+    // =============================================================
+    // Parse out Fluid name   
+    fluid.name = fluid_json["INFO"]["NAME"].GetString(); 
+    
+    // Push the fluid name onto the name_vector used for returning the full list of library fluids
+    // If it is found that this fluid already exists in the library, it will be popped back off below.
+    name_vector.push_back(fluid.name);
+    
+    try{
+        // CAS number
+        if (!fluid_json["INFO"].HasMember("CAS")){ throw ValueError(format("fluid [%s] does not have \"CAS\" member",fluid.name.c_str())); }
+        fluid.CAS = fluid_json["INFO"]["CAS"].GetString();
+        
+        // REFPROP alias
+        if (!fluid_json["INFO"].HasMember("REFPROP_NAME")){ throw ValueError(format("fluid [%s] does not have \"REFPROP_NAME\" member",fluid.name.c_str())); }
+        fluid.REFPROPname = fluid_json["INFO"]["REFPROP_NAME"].GetString();
+        
+        // FORMULA
+        if (fluid_json["INFO"].HasMember("FORMULA")){
+            fluid.formula = cpjson::get_string(fluid_json["INFO"], "FORMULA");
+        }
+        else{ fluid.formula = "N/A"; }
+        
+        // Abstract references
+        if (fluid_json["INFO"].HasMember("INCHI_STRING")){
+            fluid.InChI = cpjson::get_string(fluid_json["INFO"], "INCHI_STRING");
+        }
+        else{ fluid.InChI = "N/A"; }
+        
+        if (fluid_json["INFO"].HasMember("INCHI_KEY")){
+            fluid.InChIKey = cpjson::get_string(fluid_json["INFO"], "INCHI_KEY");
+        }
+        else{ fluid.InChIKey = "N/A"; }
+        
+        if (fluid_json["INFO"].HasMember("SMILES")){
+            fluid.smiles = cpjson::get_string(fluid_json["INFO"], "SMILES");
+        }
+        else{ fluid.smiles = "N/A"; }
+        
+        if (fluid_json["INFO"].HasMember("CHEMSPIDER_ID")){
+            fluid.ChemSpider_id = cpjson::get_integer(fluid_json["INFO"], "CHEMSPIDER_ID");
+        }
+        else{ fluid.ChemSpider_id = -1; }
+        
+        if (fluid_json["INFO"].HasMember("2DPNG_URL")){
+            fluid.TwoDPNG_URL = cpjson::get_string(fluid_json["INFO"], "2DPNG_URL");
+        }
+        else{ fluid.TwoDPNG_URL = "N/A"; }
+        
+        // Parse the environmental parameters
+        if (!(fluid_json["INFO"].HasMember("ENVIRONMENTAL"))){
+            if (get_debug_level() > 0){
+                std::cout << format("Environmental data are missing for fluid [%s]\n", fluid.name.c_str()) ;
+            }
+        }
+        else{
+            parse_environmental(fluid_json["INFO"]["ENVIRONMENTAL"], fluid);
+        }
+        
+        // Aliases
+        fluid.aliases = cpjson::get_string_array(fluid_json["INFO"]["ALIASES"]);
+        
+        // Critical state
+        if (!fluid_json.HasMember("STATES")){ throw ValueError(format("fluid [%s] does not have \"STATES\" member",fluid.name.c_str())); }
+        parse_states(fluid_json["STATES"], fluid);
+        
+        if (get_debug_level() > 5){
+            std::cout << format("Loading fluid %s with CAS %s; %d fluids loaded\n", fluid.name.c_str(), fluid.CAS.c_str(), index);
+        }
+        
+        // EOS
+        parse_EOS_listing(fluid_json["EOS"], fluid);
+        
+        // Validate the fluid
+        validate(fluid);
+        
+        // Ancillaries for saturation
+        if (!fluid_json.HasMember("ANCILLARIES")){throw ValueError(format("Ancillary curves are missing for fluid [%s]",fluid.name.c_str()));};
+        parse_ancillaries(fluid_json["ANCILLARIES"],fluid);
+        
+        // Surface tension
+        if (!(fluid_json["ANCILLARIES"].HasMember("surface_tension"))){
+            if (get_debug_level() > 0){
+                std::cout << format("Surface tension curves are missing for fluid [%s]\n", fluid.name.c_str()) ;
+            }
+        }
+        else{
+            parse_surface_tension(fluid_json["ANCILLARIES"]["surface_tension"], fluid);
+        }
+        
+        // Melting line
+        if (!(fluid_json["ANCILLARIES"].HasMember("melting_line"))){
+            if (get_debug_level() > 0){
+                std::cout << format("Melting line curves are missing for fluid [%s]\n", fluid.name.c_str()) ;
+            }
+        }
+        else{
+            parse_melting_line(fluid_json["ANCILLARIES"]["melting_line"], fluid);
+        }
+        
+        // Parse the transport property (viscosity and/or thermal conductivity) parameters
+        if (!(fluid_json.HasMember("TRANSPORT"))){
+            default_transport(fluid);
+        }
+        else{
+            parse_transport(fluid_json["TRANSPORT"], fluid);
+        }
+        
+        // If the fluid is ok...
+        
+        // First check that none of the identifiers are already present
+        // ===============================================================
+        // Remember that index is already initialized to fluid_map.size() = max index + 1.
+        // If the new fluid name, CAS, or aliases are found in the string_to_index_map, then
+        // the fluid is already in the fluid_map, so reset index to it's key.
+        
+        if (string_to_index_map.find(fluid.CAS) != string_to_index_map.end()){
+            index = string_to_index_map.find(fluid.CAS)->second;                 //if CAS found, grab index
+        }
+        else if (string_to_index_map.find(fluid.name) != string_to_index_map.end()){
+            index = string_to_index_map.find(fluid.name)->second;                // if name found, grab index
+        }
+        else if (string_to_index_map.find(upper(fluid.name)) != string_to_index_map.end()){
+            index = string_to_index_map.find(upper(fluid.name))->second;         // if uppercase name found, grab index
+        }
+        else{
+            // Check the aliases
+            for (std::size_t i = 0; i < fluid.aliases.size(); ++i)
+            {
+                if (string_to_index_map.find(fluid.aliases[i]) != string_to_index_map.end()){ 
+                    index = string_to_index_map.find(fluid.aliases[i])->second;                       // if alias found, grab index
+                    break; 
+                }
+                if (string_to_index_map.find(upper(fluid.aliases[i])) != string_to_index_map.end()){  // if ALIAS found, grab index
+                    index = string_to_index_map.find(upper(fluid.aliases[i]))->second; 
+                    break; 
+                }
+            }
+        }
+        
+        bool fluid_exists = false;     // Initialize flag for doing replace instead of add
+
+        if (index != fluid_map.size()){   // Fluid already in list if index was reset to something < fluid_map.size()
+            fluid_exists = true;          //   Set the flag for replace
+            name_vector.pop_back();       //   Pop duplicate name off the back of the name vector; otherwise it keeps growing!
+            if (!get_config_bool(OVERWRITE_FLUIDS)){   // Throw exception if replacing fluids is not allowed
+                throw ValueError(format("Cannot load fluid [%s:%s] because it is already in library; index = [%i] of [%i]; Consider enabling the config boolean variable OVERWRITE_FLUIDS", fluid.name.c_str(), fluid.CAS.c_str(), index, fluid_map.size()));
+            }
+        }
+        
+        // index now holds either 
+        //    1. the index of a fluid that's already present, in which case it will be overwritten, or
+        //    2. the fluid_map.size(), in which case a new entry will be added to the list
+        
+        // Add/Replace index->fluid mapping
+        // If the fluid index exists, the [] operator replaces the existing entry with the new fluid;
+        //    However, since fluid is a custom type, the old entry must be erased first to properly
+        //    release the memory before adding in the new fluid object at the same location (index)
+        if (fluid_exists) fluid_map.erase(fluid_map.find(index));
+        // if not, it will add the (index,fluid) pair to the map using the new index value (fluid_map.size())
+        fluid_map[index] = fluid;
+        
+        // Add/Replace index->JSONstring mapping to easily pull out if the user wants it
+        // Convert fuid_json to a string and store it in the map at index.
+        // if the fluid index exists, the [] operator replaces the existing entry with the new JSONstring;
+        //    However, since fluid_json is a custom type, the old entry must be erased first to properly
+        //    release the memory before adding in the new fluid object at the same location (index)
+        if (fluid_exists) JSONstring_map.erase(JSONstring_map.find(index));
+        // if not, it will add the new (index,JSONstring) pair to the map.
+        JSONstring_map[index] = cpjson::json2string(fluid_json);
+        
+        // Add/Replace CAS->index mapping
+        // This map helps find the index of a fluid in the fluid_map given a CAS string
+        // If the CAS string exists, the [] operator will replace index with an updated index number;
+        // if not, it will add a new (CAS,index) pair to the map.
+        string_to_index_map[fluid.CAS] = index;
+        
+        // Add/Replace name->index mapping
+        // This map quickly finds the index of a fluid in the fluid_map given its name string
+        // Again, the map [] operator replaces if the alias is found, adds the new (name,index) pair if not
+        string_to_index_map[fluid.name] = index;
+        
+        // Add/Replace the aliases->index mapping
+        // This map quickly finds the index of a fluid in the fluid_map given an alias string
+        // Again, the map [] operator replaces if the alias is found, adds the new (alias,index) pair if not
+        for (std::size_t i = 0; i < fluid.aliases.size(); ++i)
+        {
+            string_to_index_map[fluid.aliases[i]] = index;
+            
+            // Add uppercase alias for EES compatibility
+            string_to_index_map[upper(fluid.aliases[i])] = index;
+        }
+        
+        //If Debug level set >5 print fluid name and total size of fluid_map
+        if (get_debug_level() > 5){ std::cout << format("Loaded fluid: %s - Number of fluids = %d\n", fluid.name, fluid_map.size()); }
+
+    }
+    catch (const std::exception &e){
+        throw ValueError(format("Unable to load fluid [%s] due to error: %s",fluid.name.c_str(),e.what()));
+    }
+};
+
 
 JSONFluidLibrary & get_library(void){
     if (library.is_empty()){ load(); }
@@ -87,6 +321,11 @@ JSONFluidLibrary & get_library(void){
 CoolPropFluid get_fluid(const std::string &fluid_string){
     if (library.is_empty()){ load(); }
     return library.get(fluid_string);
+}
+    
+std::string get_fluid_as_JSONstring(const std::string &identifier){
+    if (library.is_empty()){ load(); }
+    return library.get_JSONstring(identifier);
 }
 
 std::string get_fluid_list(void){

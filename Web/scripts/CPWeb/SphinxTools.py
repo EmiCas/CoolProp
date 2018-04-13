@@ -2,7 +2,7 @@ import CoolProp
 import os
 
 web_dir = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..'))
-root_dir = os.path.abspath(os.path.join(web_dir, '..')) 
+root_dir = os.path.abspath(os.path.join(web_dir, '..'))
 
 fluid_template = u""".. _fluid_{fluid:s}:
 
@@ -19,6 +19,7 @@ Fluid Information
 .. csv-table::
    :header-rows: 1
    :widths: 40, 60
+   :delim: ;
    :file: {fluid:s}-info.csv
    
 REFPROP Validation Data
@@ -48,28 +49,34 @@ In this figure, we start off with a state point given by T,P and then we calcula
 """
 
 table_template = """ Parameter, Value
-**General**,
-Molar mass [kg/mol],{mm:s}
-CAS number, {CAS:s}
-ASHRAE class, {ASHRAE:s}
-Formula, {formula:s}
-**Limits**,
-Maximum temperature [K],{Tmax:s}
-Maximum pressure [Pa],{pmax:s}
-**Triple point**,
-Triple point temperature [K],{Tt:s}
-Triple point pressure [Pa], {pt:s}
-**Critical point**,
-Critical point temperature [K], {Tc:s}
-Critical point density [kg/m3], {rhoc_mass:s}
-Critical point density [mol/m3], {rhoc_molar:s}
-Critical point pressure [Pa], {pc:s}
+**General**;
+Molar mass [kg/mol];{mm:s}
+CAS number; {CAS:s}
+ASHRAE class; {ASHRAE:s}
+Formula; {formula:s}
+Acentric factor; {acentric:s}
+InChI; {inchi:s}
+InChIKey; {inchikey:s}
+SMILES; {smiles:s}
+ChemSpider ID; {ChemSpider_id:s}
+2D image; .. image:: {twoDurl:s}
+**Limits**;
+Maximum temperature [K];{Tmax:s}
+Maximum pressure [Pa];{pmax:s}
+**Triple point**;
+Triple point temperature [K];{Tt:s}
+Triple point pressure [Pa]; {pt:s}
+**Critical point**;
+Critical point temperature [K]; {Tc:s}
+Critical point density [kg/m3]; {rhoc_mass:s}
+Critical point density [mol/m3]; {rhoc_molar:s}
+Critical point pressure [Pa]; {pc:s}
 {reducing_string:s}
 """
 
-reducing_template = """**Reducing point**,
-Reducing point temperature [K], {Tr:s}
-Reducing point density [mol/m3], {rhor_molar:s}
+reducing_template = """**Reducing point**;
+Reducing point temperature [K]; {Tr:s}
+Reducing point density [mol/m3]; {rhor_molar:s}
 """
 
 bibtex_keys = ['EOS','CP0','CONDUCTIVITY','VISCOSITY','MELTING_LINE','SURFACE_TENSION']
@@ -91,37 +98,41 @@ BTC = BibTeXerClass(os.path.join(root_dir,"CoolPropBibTeXLibrary.bib"))
 import pybtex
 style = pybtex.plugin.find_plugin('pybtex.style.formatting', 'plain')()
 backend = pybtex.plugin.find_plugin('pybtex.backends', 'html')()
-parser = pybtex.database.input.bibtex.Parser()    
+parser = pybtex.database.input.bibtex.Parser()
+
 
 def entry2html(entry):
     for e in entry:
         return e.text.render(backend).replace('{','').replace('}','').replace('\n', ' ')
 
+
 def generate_bibtex_string(fluid):
     string = ''
     for key in bibtex_keys:
-        sect_string = ''
+        header_string = ''
+        sect_strings = []
         try:
             # get the item
             bibtex_key = CoolProp.CoolProp.get_BibTeXKey(fluid,key).strip()
             for thekey in bibtex_key.split(','):
                 if thekey.strip() in bibdata.entries.keys():
                     html = BTC.getEntry(key=thekey.strip(), fmt='html')
-                    if sect_string == '':
+                    if len(sect_strings) == 0:
                         sect = bibtex_map[key]
-                        sect_string += sect+'\n'+'-'*len(sect)+'\n\n'
-                    sect_string += '.. raw:: html\n\n   '+html+'\n\n'
+                        header_string = sect+'\n'+'-'*len(sect)+'\n\n'
+                    sect_strings.append('.. raw:: html\n\n   '+html+'\n\n')
         except ValueError as E:
             print 'error:', E
-        string += sect_string
+        string += header_string + '\n\n.. raw:: html\n\n    <br><br> \n\n'.join(sect_strings)
     return string
 
+
 class FluidInfoTableGenerator(object):
-    
+
     def __init__(self, name):
-    
+
         self.name = name
-        
+
     def write(self, path):
         def tos(n):
             ''' convert number to nicely formatted string '''
@@ -139,10 +150,11 @@ class FluidInfoTableGenerator(object):
         pt = CoolProp.CoolProp.PropsSI(self.name,'ptriple')
         Tmax = CoolProp.CoolProp.PropsSI(self.name,'Tmax')
         pmax = CoolProp.CoolProp.PropsSI(self.name,'pmax')
+        acentric = CoolProp.CoolProp.PropsSI(self.name,'acentric')
         rhoc_mass = CoolProp.CoolProp.PropsSI(self.name,'rhomass_critical')
         rhoc_molar = CoolProp.CoolProp.PropsSI(self.name,'rhomolar_critical')
         rhor_molar = CoolProp.CoolProp.PropsSI(self.name,'rhomolar_reducing')
-        
+
         CAS = CoolProp.CoolProp.get_fluid_param_string(self.name, "CAS")
         ASHRAE = CoolProp.CoolProp.get_fluid_param_string(self.name, "ASHRAE34")
         formula = CoolProp.CoolProp.get_fluid_param_string(self.name, "formula")
@@ -151,13 +163,18 @@ class FluidInfoTableGenerator(object):
         else:
             formula = 'Not applicable'
         formula = formula.replace('_{1}','')
-        
+        InChI = CoolProp.CoolProp.get_fluid_param_string(self.name, "INCHI")
+        InChiKey = CoolProp.CoolProp.get_fluid_param_string(self.name, "INCHIKEY")
+        smiles = CoolProp.CoolProp.get_fluid_param_string(self.name, "SMILES")
+        ChemSpider_id = CoolProp.CoolProp.get_fluid_param_string(self.name, "CHEMSPIDER_ID")
+        twoDurl = CoolProp.CoolProp.get_fluid_param_string(self.name, "2DPNG_URL")
+
         # Generate (or not) the reducing data
         reducing_data = ''
         if abs(Tr - Tc) > 1e-3:
-            reducing_data = reducing_template.format(Tr = tos(Tr), 
+            reducing_data = reducing_template.format(Tr = tos(Tr),
                                                      rhor_molar = tos(rhor_molar))
-            
+
         args = dict(mm = tos(molar_mass),
                     Tt = tos(Tt),
                     pt = tos(pt),
@@ -165,32 +182,40 @@ class FluidInfoTableGenerator(object):
                     rhoc_mass = tos(rhoc_mass),
                     rhoc_molar = tos(rhoc_molar),
                     pc = tos(pc),
+                    acentric = tos(acentric),
                     CAS = tos(CAS),
                     ASHRAE = tos(ASHRAE),
                     Tmax = tos(Tmax),
                     pmax = tos(pmax),
                     reducing_string = reducing_data,
-                    formula = formula)
+                    formula = formula,
+                    inchi = InChI,
+                    inchikey = InChiKey,
+                    smiles = smiles,
+                    ChemSpider_id = ChemSpider_id,
+                    twoDurl = twoDurl
+                    )
         out = table_template.format(**args)
-        
+
         with open(os.path.join(path, self.name+'-info.csv'),'w') as fp:
             print 'writing', os.path.join(path, self.name+'-info.csv')
             fp.write(out)
-            
+
+
 class FluidGenerator(object):
     def __init__(self, fluid):
         self.fluid = fluid
-        
+
     def write(self, path):
-        
+
         # Write CSV table data for fluid information
         ITG = FluidInfoTableGenerator(self.fluid)
         ITG.write(path)
-        
+
         aliases = ', '.join(['``' + a.strip() + '``' for a in CoolProp.CoolProp.get_fluid_param_string(self.fluid, 'aliases').strip().split(',') if a])
         if aliases:
             aliases = 'Aliases\n=======\n\n'+aliases + '\n'
-        
+
         references = generate_bibtex_string(self.fluid)
         if references:
             references = 'References\n==========\n'+references+'\n'
@@ -201,7 +226,7 @@ class FluidGenerator(object):
                                     fluid_stars = '*'*len(self.fluid),
                                     references = references
                                     )
-        
+
         with open(os.path.join(path, self.fluid+'.rst'), 'w') as fp:
             print 'writing', os.path.join(path, self.fluid+'.rst')
             fp.write(out.encode('utf8'))

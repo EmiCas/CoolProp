@@ -1,6 +1,10 @@
 #if defined(_MSC_VER)
+#ifndef _CRTDBG_MAP_ALLOC
 #define _CRTDBG_MAP_ALLOC
+#endif
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
 #include <crtdbg.h>
 #endif
 
@@ -30,6 +34,7 @@
 #include <exception>
 #include <stdio.h>
 #include <string>
+#include <locale>
 #include "CoolPropTools.h"
 #include "Solvers.h"
 #include "MatrixMath.h"
@@ -40,6 +45,7 @@
 #include "Backends/Helmholtz/MixtureParameters.h"
 #include "DataStructures.h"
 #include "Backends/REFPROP/REFPROPMixtureBackend.h"
+#include "Backends/Cubics/CubicsLibrary.h"
 
 #if defined(ENABLE_CATCH)
     #include "catch.hpp"
@@ -112,8 +118,15 @@ bool has_solution_concentration(const std::string &fluid_string)
     return (fluid_string.find('-') != std::string::npos && fluid_string.find('%') != std::string::npos);
 }
 
+struct delim : std::numpunct<char> {
+    char m_c;
+    delim(char c): m_c(c) {};
+    char do_decimal_point() const { return m_c; }
+};
+
 std::string extract_fractions(const std::string &fluid_string, std::vector<double> &fractions)
 {
+
     if (has_fractions_in_string(fluid_string))
     {
         fractions.clear();
@@ -136,18 +149,33 @@ std::string extract_fractions(const std::string &fluid_string, std::vector<doubl
             if (name_fraction.size() != 2){throw ValueError(format("Could not break [%s] into name/fraction", fluid.substr(0, fluid.size()-1).c_str()));}
 
             // Convert fraction to a double
-            char *pEnd;
             const std::string &name = name_fraction[0], &fraction = name_fraction[1];
-            double f = strtod(fraction.c_str(), &pEnd);
+            // The default locale for conversion from string to double is en_US with . as the deliminter
+            // Good: 0.1234 Bad: 0,1234
+            // But you can change the punctuation character for fraction parsing 
+            // with the configuration variable FLOAT_PUNCTUATION to change the locale to something more convenient for you (e.g., a ',')
+            // See also http://en.cppreference.com/w/cpp/locale/numpunct/decimal_point
+            std::stringstream ssfraction(fraction);
+            char c = get_config_string(FLOAT_PUNCTUATION)[0];
+            ssfraction.imbue(std::locale(ssfraction.getloc(), new delim(c)));
+            double f;
+            ssfraction >> f;
+            if (ssfraction.rdbuf()->in_avail() != 0){
+                throw ValueError(format("fraction [%s] was not converted fully", fraction.c_str()));
+            }
+            
+            if (f > 1 || f < 0){
+                throw ValueError(format("fraction [%s] was not converted to a value between 0 and 1 inclusive", fraction.c_str()));
+            }
 
-            // If pEnd points to the last character in the string, it wasn't able to do the conversion
-            if (pEnd == &(fraction[fraction.size()-1])){throw ValueError(format("Could not convert [%s] into number", fraction.c_str()));}
+            if (f > 10*DBL_EPSILON)  // Only push component if fraction is positive and non-zero
+            {
+                // And add to vector
+                fractions.push_back(f);
 
-            // And add to vector
-            fractions.push_back(f);
-
-            // Add name
-            names.push_back(name);
+                // Add name
+                names.push_back(name);
+            }
         }
 
         if (get_debug_level()>10) std::cout << format("%s:%d: Detected fractions of %s for %s.",__FILE__,__LINE__,vec_to_string(fractions).c_str(), (strjoin(names, "&")).c_str());
@@ -322,6 +350,10 @@ void _PropsSI_outputs(shared_ptr<AbstractState> &State,
 	   std::cout << format("%s (%d): in2 = %s ",__FILE__,__LINE__, vec_to_string(in2).c_str()) << std::endl;
 	}
 
+    // Get configuration variable for line tracing, see #1443
+    const bool use_guesses = get_config_bool(USE_GUESSES_IN_PROPSSI);
+    GuessesStructure guesses;
+
 	// Resize the output matrix
     std::size_t N1 = std::max(static_cast<std::size_t>(1), in1.size());
     std::size_t N2 = std::max(static_cast<std::size_t>(1), output_parameters.size());
@@ -329,6 +361,7 @@ void _PropsSI_outputs(shared_ptr<AbstractState> &State,
 
     // Throw an error if at the end, there were no successes
     bool success = false;
+    bool success_inner = false;
 
     if (get_debug_level() > 100)
     {
@@ -336,10 +369,17 @@ void _PropsSI_outputs(shared_ptr<AbstractState> &State,
     }
 	// Iterate over the state variable inputs
 	for (std::size_t i = 0; i < IO.size(); ++i){
+        // Reset the success indicator for the current state point
+        success_inner = false;
 		try{
             if (input_pair != INPUT_PAIR_INVALID && !all_trivial_outputs && !all_outputs_in_inputs){
                 // Update the state since it is a valid set of inputs
-                State->update(input_pair, in1[i], in2[i]);
+                if (!use_guesses || i == 0) {
+                    State->update(input_pair, in1[i], in2[i]);
+                } else {
+                    State->update_with_guesses(input_pair, in1[i], in2[i], guesses);
+                    guesses.clear();
+                }
             }
         }
         catch(...){
@@ -353,10 +393,10 @@ void _PropsSI_outputs(shared_ptr<AbstractState> &State,
             // If all the outputs are inputs, there is no need for a state input
             if (all_outputs_in_inputs){
                 if (p1 == output_parameters[j].Of1){
-                    IO[i][j] = in1[i]; success = true; continue;
+                    IO[i][j] = in1[i]; success_inner = true; continue;
                 }
                 else if (p2 == output_parameters[j].Of1){
-                    IO[i][j] = in2[i]; success = true; continue;
+                    IO[i][j] = in2[i]; success_inner = true; continue;
                 }
                 else{
                     throw ValueError();
@@ -367,7 +407,17 @@ void _PropsSI_outputs(shared_ptr<AbstractState> &State,
                 switch (output.type){
                     case output_parameter::OUTPUT_TYPE_TRIVIAL:
                     case output_parameter::OUTPUT_TYPE_NORMAL:
-                        IO[i][j] = State->keyed_output(output.Of1); break;
+                        IO[i][j] = State->keyed_output(output.Of1); 
+                        if (use_guesses) {
+                            switch (output.Of1) {
+                            case iDmolar: guesses.rhomolar = IO[i][j]; break;
+                            case iT: guesses.T = IO[i][j]; break;
+                            case iP: guesses.p = IO[i][j]; break;
+                            case iHmolar: guesses.hmolar = IO[i][j]; break;
+                            case iSmolar: guesses.smolar = IO[i][j]; break;
+                            }
+                        }
+                        break;
                     case output_parameter::OUTPUT_TYPE_FIRST_DERIVATIVE:
                         IO[i][j] = State->first_partial_deriv(output.Of1, output.Wrt1, output.Constant1); break;
                     case output_parameter::OUTPUT_TYPE_FIRST_SATURATION_DERIVATIVE:
@@ -378,15 +428,70 @@ void _PropsSI_outputs(shared_ptr<AbstractState> &State,
                         throw ValueError(format("")); break;
                 }
                 // At least one has succeeded
-                success = true;
+                success_inner = true;
             }
             catch(...){
                 if (one_input_one_output){IO.clear(); throw;} // Re-raise the exception since we want to bubble the error
                 IO[i][j] = _HUGE;
             }
         }
+        // We want to have at least rhomolar and T, but we do not raise errors here
+        if (use_guesses && success_inner) {
+            if (!ValidNumber(guesses.rhomolar)) {
+                try { guesses.rhomolar = State->rhomolar(); }
+                catch (...) { guesses.rhomolar = _HUGE; }
+            }
+            if (!ValidNumber(guesses.T)) {
+                try { guesses.T = State->T(); }
+                catch (...) { guesses.T = _HUGE; }
+            }
+        }
+        // Save the success indicator, just a single valid output is enough
+        success |= success_inner;
 	}
     if (success == false) { IO.clear(); throw ValueError(format("No outputs were able to be calculated"));}
+}
+
+
+bool StripPhase(std::string &Name, shared_ptr<AbstractState> &State)
+// Parses an imposed phase out of the Input Name string using the "|" delimiter
+{
+    std::vector<std::string> strVec = strsplit(Name, '|');    // Split input key string in to vector containing input key [0] and phase string [1]
+    if (strVec.size() > 1) {                                  // If there is a phase string (contains "|" character)
+        // Check for invalid backends for setting phase in PropsSI
+        std::string strBackend = State->backend_name();
+        if (strBackend == get_backend_string(INCOMP_BACKEND))
+            throw ValueError("Cannot set phase on Incompressible Fluid; always liquid phase");   // incompressible fluids are always "liquid".
+        if (strBackend == get_backend_string(IF97_BACKEND))
+            throw ValueError("Can't set phase on IF97 Backend");                                 // IF97 has to calculate it's own phase region
+        if (strBackend == get_backend_string(TTSE_BACKEND))
+            throw ValueError("Can't set phase on TTSE Backend in PropsSI");                      // Shouldn't be calling from High-Level anyway
+        if (strBackend == get_backend_string(BICUBIC_BACKEND))
+            throw ValueError("Can't set phase on BICUBIC Backend in PropsSI");                   // Shouldn't be calling from High-Level anyway
+        if (strBackend == get_backend_string(VTPR_BACKEND))
+            throw ValueError("Can't set phase on VTPR Backend in PropsSI");                      // VTPR has no phase functions to call
+
+        phases imposed = iphase_not_imposed;                  // Initialize imposed phase
+        if (strVec.size() > 2)                                // If there's more than on phase separator, throw error
+        {
+            throw ValueError(format("Invalid phase format: \"%s\"", Name));
+        }
+        // Handle prefixes of iphase_, phase_, or <none>
+        std::basic_string <char>::iterator str_Iter;
+        std::string strPhase = strVec[1];                     //    Create a temp string so we can modify the prefix
+        if (strPhase.find("iphase_") != strPhase.npos) { str_Iter = strPhase.erase(strPhase.begin()); }  // Change "iphase_" to "phase_"
+        if (strPhase.find("phase_") == strPhase.npos) { strPhase.insert(0, "phase_"); }                  // Prefix with "phase_" if missing
+        // See if phase is a valid phase string, updating imposed while we're at it...
+        if ( !is_valid_phase(strPhase, imposed) )
+        {
+            throw ValueError(format("Phase string \"%s\" is not a valid phase", strVec[1]));    // throw error with original string if not valid
+        }
+        // Parsed phase string was valid
+        Name = strVec[0];                                     //     Update input name to just the key string part
+        State->specify_phase(imposed);                        //     Update the specified phase on the backend State
+        return true;                                          //     Return true because a valid phase string was found
+    }
+    return false;                                             // Return false if there was no phase string on this key.
 }
 
 void _PropsSImulti(const std::vector<std::string> &Outputs,
@@ -400,8 +505,8 @@ void _PropsSImulti(const std::vector<std::string> &Outputs,
                    std::vector<std::vector<double> > &IO)
 {
     shared_ptr<AbstractState> State;
-    CoolProp::parameters key1, key2;
-    CoolProp::input_pairs input_pair;
+    CoolProp::parameters key1 = INVALID_PARAMETER, key2 = INVALID_PARAMETER;   // Initialize to invalid parameter values
+    CoolProp::input_pairs input_pair = INPUT_PAIR_INVALID;                     // Initialize to invalid input pair
     std::vector<output_parameter> output_parameters;
     std::vector<double> v1, v2;
 
@@ -414,11 +519,18 @@ void _PropsSImulti(const std::vector<std::string> &Outputs,
         throw ValueError(format("Initialize failed for backend: \"%s\", fluid: \"%s\" fractions \"%s\"; error: %s",backend.c_str(), strjoin(fluids,"&").c_str(), vec_to_string(fractions, "%0.10f").c_str(), e.what()) );
     }
 
+    //strip any imposed phase from input key strings here
+    std::string N1 = Name1;                  // Make Non-constant copy of Name1 that we can modify
+    std::string N2 = Name2;                  // Make Non-constant copy of Name2 that we can modify
+    bool HasPhase1 = StripPhase(N1, State);  // strip phase string from first name if needed
+    bool HasPhase2 = StripPhase(N2, State);  // strip phase string from second name if needed
+    if (HasPhase1 && HasPhase2)              // if both Names have a phase string, don't allow it.
+            throw ValueError("Phase can only be specified on one of the input key strings");
+
     try{
         // Get update pair
-        is_valid_parameter(Name1, key1);
-        is_valid_parameter(Name2, key2);
-        input_pair = generate_update_pair(key1, Prop1, key2, Prop2, v1, v2);
+        if (is_valid_parameter(N1, key1) && is_valid_parameter(N2, key2))
+            input_pair = generate_update_pair(key1, Prop1, key2, Prop2, v1, v2);
     }
     catch (std::exception &e){
         // Input parameter parsing failed.  Stop
@@ -511,6 +623,21 @@ double PropsSI(const std::string &Output, const std::string &Name1, double Prop1
         return _HUGE;
     }
     #endif
+}
+    
+bool add_fluids_as_JSON(const std::string &backend, const std::string &fluidstring)
+{
+    if (backend == "SRK" || backend == "PR")
+    {
+        CubicLibrary::add_fluids_as_JSON(fluidstring); return true;
+    }
+    else if (backend == "HEOS")
+    {
+        JSONFluidLibrary::add_many(fluidstring); return true;
+    }
+    else{
+        throw ValueError(format("You have provided an invalid backend [%s] to add_fluids_as_JSON; valid options are SRK, PR, HEOS",backend.c_str()));
+    }
 }
 #if defined(ENABLE_CATCH)
 TEST_CASE("Check inputs to PropsSI","[PropsSI]")
@@ -807,11 +934,11 @@ void set_reference_stateS(const std::string &fluid_string, const std::string &re
         }
         else
         {
-            throw ValueError(format("reference state string is invalid: [%s]",reference_state.c_str()));
+            throw ValueError(format("Reference state string is invalid: [%s]",reference_state.c_str()));
         }
     }
 }
-void set_reference_stateD(const std::string &Ref, double T, double rhomolar, double h0, double s0)
+void set_reference_stateD(const std::string &Ref, double T, double rhomolar, double hmolar0, double smolar0)
 {
     std::vector<std::string> _comps(1, Ref);
     CoolProp::HelmholtzEOSMixtureBackend HEOS(_comps);
@@ -819,12 +946,11 @@ void set_reference_stateD(const std::string &Ref, double T, double rhomolar, dou
     HEOS.update(DmolarT_INPUTS, rhomolar, T);
 
     // Get current values for the enthalpy and entropy
-    double deltah = HEOS.hmass() - h0; // offset from specified enthalpy in J/mol
-    double deltas = HEOS.smass() - s0; // offset from specified entropy in J/mol/K
-    double delta_a1 = deltas/(8.314472/HEOS.molar_mass());
-    double delta_a2 = -deltah/(8.314472/HEOS.molar_mass()*HEOS.get_reducing_state().T);
-    HEOS.get_components()[0].EOS().alpha0.EnthalpyEntropyOffset.set(delta_a1, delta_a2, "custom");
-    HEOS.update_states();
+    double deltah = HEOS.hmolar() - hmolar0; // offset from specified enthalpy in J/mol
+    double deltas = HEOS.smolar() - smolar0; // offset from specified entropy in J/mol/K
+    double delta_a1 = deltas/(HEOS.gas_constant());
+    double delta_a2 = -deltah/(HEOS.gas_constant()*HEOS.get_reducing_state().T);
+    set_fluid_enthalpy_entropy_offset(Ref, delta_a1, delta_a2, "custom");
 }
 
 
@@ -864,8 +990,14 @@ std::string get_global_param_string(const std::string &ParamName)
 	else if (ParamName == "REFPROP_version"){
 		return REFPROPMixtureBackend::version();
 	}
+    else if (ParamName == "cubic_fluids_schema"){
+        return CoolProp::CubicLibrary::get_cubic_fluids_schema();
+    }
+    else if (ParamName == "cubic_fluids_list"){
+        return CoolProp::CubicLibrary::get_cubic_fluids_list();
+    }
     else{
-        throw ValueError(format("Input value [%s] is invalid",ParamName.c_str()));
+        throw ValueError(format("Input parameter [%s] is invalid",ParamName.c_str()));
     }
 };
 #if defined(ENABLE_CATCH)
@@ -937,10 +1069,17 @@ std::string phase_lookup_string(phases Phase)
 }
 std::string PhaseSI(const std::string &Name1, double Prop1, const std::string &Name2, double Prop2, const std::string &FluidName)
 {
-    double Phase_double = PropsSI("Phase",Name1,Prop1,Name2,Prop2,FluidName);
-    if (!ValidNumber(Phase_double)){ return "";}
-    std::size_t Phase_int = static_cast<std::size_t>(Phase_double);
-    return phase_lookup_string(static_cast<phases>(Phase_int));
+    double Phase_double = PropsSI("Phase",Name1,Prop1,Name2,Prop2,FluidName);   // Attempt to get "Phase" from PropsSI()
+    if (!ValidNumber(Phase_double)){                                            // if the returned phase is invalid...
+        std::string strPhase = phase_lookup_string(iphase_unknown);             //     phase is unknown.
+        std::string strError = get_global_param_string("errstring").c_str();    //     fetch waiting error string
+        if (strError != "") {                                                   //     if error string is not empty,
+            strPhase.append(": " + strError);                                   //        append it to the phase string.
+        }
+        return strPhase;                                                        //     return the "unknown" phase string
+    }                                                                           // else
+    std::size_t Phase_int = static_cast<std::size_t>(Phase_double);             //     convert returned phase to int
+    return phase_lookup_string(static_cast<phases>(Phase_int));                 //     return phase as a string
 }
 
 /*
@@ -954,24 +1093,3 @@ std::string PhaseSI(const std::string &Name1, double Prop1, const std::string &N
 */
 } /* namespace CoolProp */
 
-
-
-/// *********************************************************************************
-/// *********************************************************************************
-///                     EMSCRIPTEN (for javascript)
-/// *********************************************************************************
-/// *********************************************************************************
-
-#ifdef EMSCRIPTEN
-
-#include <emscripten/bind.h>
-using namespace emscripten;
-
-// Binding code
-EMSCRIPTEN_BINDINGS(coolprop_bindings) {
-    function("Props1SI", &CoolProp::Props1SI);
-    function("PropsSI", &CoolProp::PropsSI);
-    function("get_global_param_string", &CoolProp::get_global_param_string);
-}
-
-#endif

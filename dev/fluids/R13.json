@@ -1,5 +1,4 @@
 {
-  "ALIASES": [], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -179,18 +178,6 @@
       ]
     }
   }, 
-  "CAS": "75-72-9", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "A1", 
-    "FH": -1, 
-    "GWP100": 14400.0, 
-    "GWP20": 10800.0, 
-    "GWP500": 16400.0, 
-    "HH": -1, 
-    "Name": "R13", 
-    "ODP": -1.0, 
-    "PH": -1
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "Platzer-BOOK-1990", 
@@ -225,7 +212,7 @@
           "T_units": "K", 
           "hmolar": -1985.7238635857523, 
           "hmolar_units": "J/mol", 
-          "p": 0.9055722590136814, 
+          "p": 0.9055724893917296, 
           "p_units": "Pa", 
           "rhomolar": 17699.80590189874, 
           "rhomolar_units": "mol/m^3", 
@@ -237,7 +224,7 @@
           "T_units": "K", 
           "hmolar": 23951.607995399307, 
           "hmolar_units": "J/mol", 
-          "p": 0.9055738873950259, 
+          "p": 0.9055724893917296, 
           "p_units": "Pa", 
           "rhomolar": 0.001109681689676505, 
           "rhomolar_units": "mol/m^3", 
@@ -416,9 +403,29 @@
       "pseudo_pure": false
     }
   ], 
-  "FORMULA": "C_{1}Cl_{1}F_{3}", 
-  "NAME": "R13", 
-  "REFPROP_NAME": "R13", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=6152", 
+    "ALIASES": [], 
+    "CAS": "75-72-9", 
+    "CHEMSPIDER_ID": 6152, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "A1", 
+      "FH": -1, 
+      "GWP100": 14400.0, 
+      "GWP20": 10800.0, 
+      "GWP500": 16400.0, 
+      "HH": -1, 
+      "Name": "R13", 
+      "ODP": -1.0, 
+      "PH": -1
+    }, 
+    "FORMULA": "C_{1}Cl_{1}F_{3}", 
+    "INCHI_KEY": "AFYPFACVUDMOHA-UHFFFAOYAV", 
+    "INCHI_STRING": "InChI=1/CClF3/c2-1(3,4)5", 
+    "NAME": "R13", 
+    "REFPROP_NAME": "R13", 
+    "SMILES": "C(F)(F)(F)Cl"
+  }, 
   "STATES": {
     "critical": {
       "T": 301.88, 
@@ -437,7 +444,7 @@
       "T_units": "K", 
       "hmolar": -1985.7238635857523, 
       "hmolar_units": "J/mol", 
-      "p": 0.9055722590136814, 
+      "p": 0.9055724893917296, 
       "p_units": "Pa", 
       "rhomolar": 17699.80590189874, 
       "rhomolar_units": "mol/m^3", 
@@ -449,7 +456,7 @@
       "T_units": "K", 
       "hmolar": 23951.607995399307, 
       "hmolar_units": "J/mol", 
-      "p": 0.9055738873950259, 
+      "p": 0.9055724893917296, 
       "p_units": "Pa", 
       "rhomolar": 0.001109681689676505, 
       "rhomolar_units": "mol/m^3", 

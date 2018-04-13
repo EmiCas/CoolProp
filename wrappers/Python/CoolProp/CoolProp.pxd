@@ -4,13 +4,13 @@ cimport cython
 
 from libcpp.vector cimport vector
 
-from typedefs cimport *
+from .typedefs cimport *
 
 include "AbstractState.pxd"
        
 cdef class State:
     cdef AbstractState pAS
-    cdef readonly bytes Fluid, phase
+    cdef readonly string Fluid, phase
     cdef int iFluid,iParam1,iParam2,iOutput
     cdef double T_, rho_, p_
     

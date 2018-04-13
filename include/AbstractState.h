@@ -12,10 +12,20 @@
 #include "Exceptions.h"
 #include "DataStructures.h"
 #include "PhaseEnvelope.h"
+#include "crossplatform_shared_ptr.h"
 
 #include <numeric>
 
 namespace CoolProp {
+    
+/// This structure holds values obtained while tracing the spinodal curve
+/// (most often in the process of finding critical points, but not only)
+class SpinodalData{
+public:
+    std::vector<double> tau,   ///< The reciprocal reduced temperature (\f$\tau=T_r/T\f$)
+                        delta, ///< The reduced density (\f$\delta=\rho/\rho_r\f$)
+                        M1;    ///< The determinant of the scaled matrix for the second criticality condition
+};
 
 /// This simple class holds the values for guesses for use in some solvers
 /// that have the ability to use guess values intelligently
@@ -30,8 +40,13 @@ public:
            rhomolar_vap; ///< molar density of the vapor phase in mol/m^3
     std::vector<double> x, ///< molar composition of the liquid phase
                         y; ///< molar composition of the vapor phase
-    GuessesStructure() : T(_HUGE), p(_HUGE), rhomolar(_HUGE), hmolar(_HUGE), smolar(_HUGE), 
-                         rhomolar_liq(_HUGE), rhomolar_vap(_HUGE), x(), y(){};
+    GuessesStructure() {
+        clear();
+    };
+    void clear() {
+        T = _HUGE; p = _HUGE; rhomolar = _HUGE; hmolar = _HUGE; smolar = _HUGE;
+        rhomolar_liq = _HUGE; rhomolar_vap = _HUGE; x.clear(), y.clear();
+    }
 };
 
 //! The mother of all state classes
@@ -58,6 +73,7 @@ protected:
     /// Some administrative variables
     long _fluid_type;
     phases _phase; ///< The key for the phase from CoolProp::phases enum
+    phases imposed_phase_index; ///< If the phase is imposed, the imposed phase index
 
     bool isSupercriticalPhase(void){
         return (this->_phase == iphase_supercritical || this->_phase == iphase_supercritical_liquid || this->_phase == iphase_supercritical_gas);
@@ -88,7 +104,10 @@ protected:
     /// Transport properties
     CachedElement _viscosity, _conductivity, _surface_tension;
 
-    CachedElement _hmolar, _smolar, _umolar, _logp, _logrhomolar, _cpmolar, _cp0molar, _cvmolar, _speed_sound, _gibbsmolar;
+    CachedElement _hmolar, _smolar, _umolar, _logp, _logrhomolar, _cpmolar, _cp0molar, _cvmolar, _speed_sound, _gibbsmolar, _helmholtzmolar;
+
+    /// Excess properties
+    CachedElement _hmolar_excess, _smolar_excess, _gibbsmolar_excess, _umolar_excess, _volumemolar_excess, _helmholtzmolar_excess;
 
     /// Ancillary values
     CachedElement _rhoLanc, _rhoVanc, _pLanc, _pVanc, _TLanc, _TVanc;
@@ -96,7 +115,8 @@ protected:
     CachedElement _fugacity_coefficient;
 
     /// Smoothing values
-    double _rhospline, _dsplinedp, _dsplinedh;
+	CachedElement _rho_spline, _drho_spline_dh__constp, _drho_spline_dp__consth;
+
 
     /// Cached low-level elements for in-place calculation of other properties
     CachedElement _alpha0, _dalpha0_dTau, _dalpha0_dDelta, _d2alpha0_dTau2, _d2alpha0_dDelta_dTau,
@@ -130,6 +150,8 @@ protected:
     virtual CoolPropDbl calc_cvmolar(void){ throw NotImplementedError("calc_cvmolar is not implemented for this backend"); };
     /// Using this backend, calculate the molar Gibbs function in J/mol
     virtual CoolPropDbl calc_gibbsmolar(void){ throw NotImplementedError("calc_gibbsmolar is not implemented for this backend"); };
+    /// Using this backend, calculate the molar Helmholtz energy in J/mol
+    virtual CoolPropDbl calc_helmholtzmolar(void){ throw NotImplementedError("calc_helmholtzmolar is not implemented for this backend"); };
     /// Using this backend, calculate the speed of sound in m/s
     virtual CoolPropDbl calc_speed_sound(void){ throw NotImplementedError("calc_speed_sound is not implemented for this backend"); };
     /// Using this backend, calculate the isothermal compressibility \f$ \kappa = -\frac{1}{v}\left.\frac{\partial v}{\partial p}\right|_T=\frac{1}{\rho}\left.\frac{\partial \rho}{\partial p}\right|_T\f$  in 1/Pa
@@ -154,8 +176,14 @@ protected:
     virtual CoolPropDbl calc_fugacity_coefficient(std::size_t i){ throw NotImplementedError("calc_fugacity_coefficient is not implemented for this backend"); };
     /// Using this backend, calculate the fugacity in Pa
     virtual CoolPropDbl calc_fugacity(std::size_t i){ throw NotImplementedError("calc_fugacity is not implemented for this backend"); };
+    /// Using this backend, calculate the chemical potential in J/mol
+    virtual CoolPropDbl calc_chemical_potential(std::size_t i) { throw NotImplementedError("calc_chemical_potential is not implemented for this backend"); };
     /// Using this backend, calculate the phase identification parameter (PIP)
     virtual CoolPropDbl calc_PIP(void){ throw NotImplementedError("calc_PIP is not implemented for this backend"); };
+
+    // Excess properties
+    /// Using this backend, calculate and cache the excess properties
+    virtual void calc_excess_properties(void) { throw NotImplementedError("calc_excess_properties is not implemented for this backend"); };
 
     // Derivatives of residual helmholtz energy
     /// Using this backend, calculate the residual Helmholtz energy term \f$\alpha^r\f$ (dimensionless)
@@ -277,6 +305,8 @@ protected:
     virtual CoolPropDbl calc_p_reducing(void){ throw NotImplementedError("calc_p_reducing is not implemented for this backend"); };
     /// Using this backend, get the critical point molar density in mol/m^3
     virtual CoolPropDbl calc_rhomolar_critical(void){ throw NotImplementedError("calc_rhomolar_critical is not implemented for this backend"); };
+    /// Using this backend, get the critical point mass density in kg/m^3 - Added for IF97Backend which is mass based
+    virtual CoolPropDbl calc_rhomass_critical(void){ throw NotImplementedError("calc_rhomass_critical is not implemented for this backend"); };
     /// Using this backend, get the reducing point molar density in mol/m^3
     virtual CoolPropDbl calc_rhomolar_reducing(void){ throw NotImplementedError("calc_rhomolar_reducing is not implemented for this backend"); };
     /// Using this backend, construct the phase envelope, the variable type describes the type of phase envelope to be built.
@@ -284,12 +314,19 @@ protected:
     /// 
     virtual CoolPropDbl calc_rhomass(void){ return rhomolar()*molar_mass(); }
     virtual CoolPropDbl calc_hmass(void){ return hmolar() / molar_mass(); }
+    virtual CoolPropDbl calc_hmass_excess(void) { return hmolar_excess() / molar_mass(); }
     virtual CoolPropDbl calc_smass(void){ return smolar() / molar_mass(); }
+    virtual CoolPropDbl calc_smass_excess(void) { return smolar_excess() / molar_mass(); }
     virtual CoolPropDbl calc_cpmass(void){ return cpmolar() / molar_mass(); }
     virtual CoolPropDbl calc_cp0mass(void){ return cp0molar() / molar_mass(); }
     virtual CoolPropDbl calc_cvmass(void){ return cvmolar() / molar_mass(); }
     virtual CoolPropDbl calc_umass(void){ return umolar() / molar_mass(); }
+    virtual CoolPropDbl calc_umass_excess(void) { return umolar_excess() / molar_mass(); }
     virtual CoolPropDbl calc_gibbsmass(void){ return gibbsmolar() / molar_mass(); }
+    virtual CoolPropDbl calc_gibbsmass_excess(void) { return gibbsmolar_excess() / molar_mass(); }
+    virtual CoolPropDbl calc_helmholtzmass(void){ return helmholtzmolar() / molar_mass(); }
+    virtual CoolPropDbl calc_helmholtzmass_excess(void) { return helmholtzmolar_excess() / molar_mass(); }
+    virtual CoolPropDbl calc_volumemass_excess(void) { return volumemolar_excess() / molar_mass(); }
 
     /// Update the states after having changed the reference state for enthalpy and entropy
     virtual void update_states(void){ throw NotImplementedError("This backend does not implement update_states function"); };
@@ -352,6 +389,9 @@ protected:
     virtual void calc_viscosity_contributions(CoolPropDbl &dilute, CoolPropDbl &initial_density, CoolPropDbl &residual, CoolPropDbl &critical){ throw NotImplementedError("calc_viscosity_contributions is not implemented for this backend"); };
     virtual void calc_conductivity_contributions(CoolPropDbl &dilute, CoolPropDbl &initial_density, CoolPropDbl &residual, CoolPropDbl &critical){ throw NotImplementedError("calc_conductivity_contributions is not implemented for this backend"); };
     virtual std::vector<CriticalState> calc_all_critical_points(void){ throw NotImplementedError("calc_all_critical_points is not implemented for this backend"); };
+    virtual void calc_build_spinodal(){ throw NotImplementedError("calc_build_spinodal is not implemented for this backend"); };
+    virtual SpinodalData calc_get_spinodal_data(){ throw NotImplementedError("calc_get_spinodal_data is not implemented for this backend"); };
+    virtual void calc_criticality_contour_values(double &L1star, double &M1star){ throw NotImplementedError("calc_criticality_contour_values is not implemented for this backend"); };
     
     /// Convert mass-based input pair to molar-based input pair;  If molar-based, do nothing
     virtual void mass_to_molar_inputs(CoolProp::input_pairs &input_pair, CoolPropDbl &value1, CoolPropDbl &value2);
@@ -360,7 +400,7 @@ protected:
     virtual void calc_change_EOS(const std::size_t i, const std::string &EOS_name){ throw NotImplementedError("calc_change_EOS is not implemented for this backend"); };
 public:
 
-    AbstractState() :_fluid_type(FLUID_TYPE_UNDEFINED), _phase(iphase_unknown), _rhospline(-_HUGE), _dsplinedp(-_HUGE), _dsplinedh(-_HUGE){ clear(); }
+    AbstractState() :_fluid_type(FLUID_TYPE_UNDEFINED), _phase(iphase_unknown){ clear(); }
     virtual ~AbstractState(){};
 
     /// A factory function to return a pointer to a new-allocated instance of one of the backends.
@@ -418,6 +458,41 @@ public:
     virtual void set_mass_fractions(const std::vector<CoolPropDbl> &mass_fractions) = 0;
     virtual void set_volu_fractions(const std::vector<CoolPropDbl> &mass_fractions){ throw NotImplementedError("Volume composition has not been implemented."); }
 
+
+
+    /**
+    \brief Set the reference state based on a string representation
+
+    @param reference_state The reference state to use, one of
+
+    Reference State | Description
+    -------------   | -------------------
+    "IIR"           | h = 200 kJ/kg, s=1 kJ/kg/K at 0C saturated liquid
+    "ASHRAE"        | h = 0, s = 0 @ -40C saturated liquid
+    "NBP"           | h = 0, s = 0 @ 1.0 bar saturated liquid
+    "DEF"           | Reset to the default reference state for the fluid
+    "RESET"         | Remove the offset
+
+    The offset in the ideal gas Helmholtz energy can be obtained from
+    \f[
+    \displaystyle\frac{\Delta s}{R_u/M}+\frac{\Delta h}{(R_u/M)T}\tau
+    \f]
+    where \f$ \Delta s = s-s_{spec} \f$ and \f$ \Delta h = h-h_{spec} \f$
+    */
+    virtual void set_reference_stateS(const std::string &reference_state){
+        throw NotImplementedError("Setting reference state has not been implemented for this backend. Try using CoolProp::set_reference_stateD instead.");
+    }
+
+    /// Set the reference state based on a thermodynamic state point specified by temperature and molar density
+    /// @param T Temperature at reference state [K]
+    /// @param rhomolar Molar density at reference state [mol/m^3]
+    /// @param hmolar0 Molar enthalpy at reference state [J/mol]
+    /// @param smolar0 Molar entropy at reference state [J/mol/K]
+    virtual void set_reference_stateD(double T, double rhomolar, double hmolar0, double smolar0){
+        throw NotImplementedError("Setting reference state has not been implemented for this backend. Try using CoolProp::set_reference_stateD instead.");
+    }
+
+
 #ifndef COOLPROPDBL_MAPS_TO_DOUBLE
     void set_mole_fractions(const std::vector<double> &mole_fractions){ set_mole_fractions(std::vector<CoolPropDbl>(mole_fractions.begin(), mole_fractions.end())); };
     void set_mass_fractions(const std::vector<double> &mass_fractions){ set_mass_fractions(std::vector<CoolPropDbl>(mass_fractions.begin(), mass_fractions.end())); };
@@ -469,14 +544,35 @@ public:
     /// Return a vector of strings of the fluid names that are in use
     std::vector<std::string> fluid_names(void);
     
+    /** Get a constant for one of the fluids forming this mixture
+     *  @param i Index (0-based) of the fluid
+     *  @param param parameter you want to obtain (probably one that is a trivial parameter)
+     */
+    virtual const double get_fluid_constant(std::size_t i, parameters param) const{ throw NotImplementedError("get_fluid_constant is not implemented for this backend"); };
+;
+    
     /// Set binary mixture floating point parameter (EXPERT USE ONLY!!!)
     virtual void set_binary_interaction_double(const std::string &CAS1, const std::string &CAS2, const std::string &parameter, const double value){ throw NotImplementedError("set_binary_interaction_double is not implemented for this backend"); };
+    /// Set binary mixture floating point parameter (EXPERT USE ONLY!!!)
+    virtual void set_binary_interaction_double(const std::size_t i, const std::size_t j, const std::string &parameter, const double value){ throw NotImplementedError("set_binary_interaction_double is not implemented for this backend"); };
     /// Set binary mixture string parameter (EXPERT USE ONLY!!!)
     virtual void set_binary_interaction_string(const std::string &CAS1, const std::string &CAS2, const std::string &parameter, const std::string &value){ throw NotImplementedError("set_binary_interaction_string is not implemented for this backend"); };
+    /// Set binary mixture string parameter (EXPERT USE ONLY!!!)
+    virtual void set_binary_interaction_string(const std::size_t i, const std::size_t j, const std::string &parameter, const std::string &value){ throw NotImplementedError("set_binary_interaction_string is not implemented for this backend"); };
     /// Get binary mixture double value (EXPERT USE ONLY!!!)
     virtual double get_binary_interaction_double(const std::string &CAS1, const std::string &CAS2, const std::string &parameter){ throw NotImplementedError("get_binary_interaction_double is not implemented for this backend"); };
+    /// Get binary mixture double value (EXPERT USE ONLY!!!)
+    virtual double get_binary_interaction_double(const std::size_t i, const std::size_t j, const std::string &parameter){ throw NotImplementedError("get_binary_interaction_double is not implemented for this backend"); };
     /// Get binary mixture string value (EXPERT USE ONLY!!!)
     virtual std::string get_binary_interaction_string(const std::string &CAS1, const std::string &CAS2, const std::string &parameter){ throw NotImplementedError("get_binary_interaction_string is not implemented for this backend"); };
+    /// Apply a simple mixing rule (EXPERT USE ONLY!!!)
+    virtual void apply_simple_mixing_rule(std::size_t i, std::size_t j, const std::string &model) { throw NotImplementedError("apply_simple_mixing_rule is not implemented for this backend"); };
+    /// Set the cubic alpha function's constants:
+    virtual void set_cubic_alpha_C(const size_t i, const std::string &parameter, const double c1, const double c2, const double c3) { throw ValueError("set_cubic_alpha_C only defined for cubic backends"); };
+    /// Set fluid parameter (currently the volume translation parameter for cubic)
+	virtual void set_fluid_parameter_double(const size_t i, const std::string &parameter, const double value) { throw ValueError("set_fluid_parameter_double only defined for cubic backends"); };
+    /// Double fluid parameter (currently the volume translation parameter for cubic)
+    virtual double get_fluid_parameter_double(const size_t i, const std::string &parameter) { throw ValueError("get_fluid_parameter_double only defined for cubic backends"); };
 
     /// Clear all the cached values
     virtual bool clear();
@@ -511,11 +607,20 @@ public:
     double p_critical(void);
     /// Return the critical molar density in mol/m^3
     double rhomolar_critical(void);
-    /// Return the critical molar density in kg/m^3
+    /// Return the critical mass density in kg/m^3
     double rhomass_critical(void);
     
     /// Return the vector of critical points, including points that are unstable or correspond to negative pressure
     std::vector<CriticalState> all_critical_points(void){ return calc_all_critical_points(); };
+    
+    /// Construct the spinodal curve for the mixture (or pure fluid)
+    void build_spinodal(){ calc_build_spinodal(); };
+    
+    /// Get the data from the spinodal curve constructed in the call to build_spinodal()
+    SpinodalData get_spinodal_data(){ return calc_get_spinodal_data(); };
+
+    /// Calculate the criticality contour values \f$\mathcal{L}_1^*\f$ and \f$\mathcal{M}_1^*\f$
+    void criticality_contour_values(double &L1star, double &M1star){ return calc_criticality_contour_values(L1star, M1star); }
 
 	/// Return the tangent plane distance for a given trial composition w
 	/// @param T Temperature (K)
@@ -529,14 +634,14 @@ public:
 	/// with
 	/// \f[ d_i = \ln z_i + \ln \phi_i(z) \f]
 	/// Or you can express the \f$ tpd \f$ in terms of fugacity (See Table 7.3 from GERG 2004 monograph) 
-	/// since \f$ \ln \phi_i = \ln f_i - \ln p -\ln x_i\f$
+	/// since \f$ \ln \phi_i = \ln f_i - \ln p -\ln z_i\f$
 	/// thus 
-	/// \f[ d_i = \ln p + \ln f_i \f]
+	/// \f[ d_i = \ln f_i(z) - \ln p\f]
 	/// and
 	/// \f[
-	/// tpd(w) = \sum_i w_i(\ln p + \ln f_i(w) - d_i)
+	/// tpd(w) = \sum_i w_i(\ln f_i(w) - \ln p - d_i)
 	/// \f]
-	/// and the \f$ p \f$ cancel, leaving
+	/// and the \f$ \ln p \f$ cancel, leaving
 	/// \f[
 	/// tpd(w) = \sum_i w_i(\ln f_i(w) - \ln f_i(z))
 	/// \f]
@@ -604,14 +709,26 @@ public:
     double hmolar(void);
     /// Return the mass enthalpy in J/kg
     double hmass(void){ return calc_hmass(); };
+    /// Return the excess molar enthalpy in J/mol
+    double hmolar_excess(void);
+    /// Return the excess mass enthalpy in J/kg
+    double hmass_excess(void) { return calc_hmass_excess(); };
     /// Return the molar entropy in J/mol/K
     double smolar(void);
     /// Return the molar entropy in J/kg/K
     double smass(void){ return calc_smass(); };
+    /// Return the molar entropy in J/mol/K
+    double smolar_excess(void);
+    /// Return the molar entropy in J/kg/K
+    double smass_excess(void) { return calc_smass_excess(); };
     /// Return the molar internal energy in J/mol
     double umolar(void);
     /// Return the mass internal energy in J/kg
     double umass(void){ return calc_umass(); };
+    /// Return the excess internal energy in J/mol
+    double umolar_excess(void);
+    /// Return the excess internal energy in J/kg
+    double umass_excess(void) { return calc_umass_excess(); };
     /// Return the molar constant pressure specific heat in J/mol/K
     double cpmolar(void);
     /// Return the mass constant pressure specific heat in J/kg/K
@@ -624,10 +741,26 @@ public:
     double cvmolar(void);
     /// Return the mass constant volume specific heat in J/kg/K
     double cvmass(void){ return calc_cvmass(); };
-    /// Return the Gibbs function in J/mol
+    /// Return the Gibbs energy in J/mol
     double gibbsmolar(void);
-    /// Return the Gibbs function in J/kg
+    /// Return the Gibbs energy in J/kg
     double gibbsmass(void){ return calc_gibbsmass(); };
+    /// Return the excess Gibbs energy in J/mol
+    double gibbsmolar_excess(void);
+    /// Return the excess Gibbs energy in J/kg
+    double gibbsmass_excess(void) { return calc_gibbsmass_excess(); };
+    /// Return the Helmholtz energy in J/mol
+    double helmholtzmolar(void);
+    /// Return the Helmholtz energy in J/kg
+    double helmholtzmass(void){ return calc_helmholtzmass(); };
+    /// Return the excess Helmholtz energy in J/mol
+    double helmholtzmolar_excess(void);
+    /// Return the excess Helmholtz energy in J/kg
+    double helmholtzmass_excess(void) { return calc_helmholtzmass_excess(); };
+    /// Return the excess volume in m^3/mol
+    double volumemolar_excess(void);
+    /// Return the excess volume in m^3/kg
+    double volumemass_excess(void) { return calc_volumemass_excess(); };
     /// Return the speed of sound in m/s
     double speed_sound(void);
     /// Return the isothermal compressibility \f$ \kappa = -\frac{1}{v}\left.\frac{\partial v}{\partial p}\right|_T=\frac{1}{\rho}\left.\frac{\partial \rho}{\partial p}\right|_T\f$  in 1/Pa
@@ -638,8 +771,17 @@ public:
     double fugacity_coefficient(std::size_t i);
     /// Return the fugacity of the i-th component of the mixture
     double fugacity(std::size_t i);
-    /// Return the fundamental derivative of gas dynamics
-    //double fundamental_derivative_of_gas_dynamics(void){return this->second_partial_deriv(iP, iDmolar, iSmolar, iDmolar, iSmolar)/pow(speed_sound(), 2)/2/pow(this->rhomolar(),3);};
+    /// Return the chemical potential of the i-th component of the mixture
+    double chemical_potential(std::size_t i);
+    /** \brief Return the fundamental derivative of gas dynamics \f$ \Gamma \f$
+     * 
+     * see also Colonna et al, FPE, 2010
+     *
+     * \f[ \Gamma = 1+\frac{\rho}{c}\left(\frac{partial c}{\partial \rho}\right)_{s} = 1+\frac{\rho}{2c^2}\left(\frac{partial^2 p}{\partial \rho^2}\right)_{s} = 1+\frac{v^3}{2c^2}\left(\frac{partial^2 p}{\partial v^2}\right)_{s}\f]
+     * 
+     * Note: densities are mass-based densities, not mole-based densities
+     */
+    double fundamental_derivative_of_gas_dynamics(void);
     /// Return the phase identification parameter (PIP) of G. Venkatarathnam and L.R. Oellrich, "Identification of the phase of a fluid using partial derivatives of pressure, volume, and temperature without reference to saturation properties: Applications in phase equilibria calculations"
     double PIP(){ return calc_PIP(); };
 
@@ -787,7 +929,7 @@ public:
     * "Methods to increase the robustness of finite-volume flow models in thermodynamic systems",
     * Energies 7 (3), 1621-1640
     *
-    * \note Not all derivatives are supported!
+    * \note Not all derivatives are supported! If you need all three currently supported values (drho_dh__p, drho_dp__h and rho_spline), you should calculate drho_dp__h first to avoid duplicate calculations.
     *
     * @param Of The parameter to be derived
     * @param Wrt The parameter that the derivative is taken with respect to
@@ -808,7 +950,7 @@ public:
      *
      * @param type currently a dummy variable that is not used
      */
-    void build_phase_envelope(const std::string &type);
+    void build_phase_envelope(const std::string &type = "");
     /**
      * \brief After having calculated the phase envelope, return the phase envelope data
      */
@@ -993,6 +1135,32 @@ public:
         return _d4alphar_dTau4;
     };
 };
+    
+/** An abstract AbstractState generator class
+ *
+ *  This class should be derived and statically initialized in a C++ file.  In the initializer, 
+ *  the register_backend function should be called.  This will register the backend family, and
+ *  when this generator is looked up in the map, the get_AbstractState function will be used 
+ *  to return an initialized instance
+ */
+class AbstractStateGenerator{
+public:
+    virtual AbstractState * get_AbstractState(const std::vector<std::string> &fluid_names) = 0;
+};
+
+/** Register a backend in the backend library (statically defined in AbstractState.cpp and not
+ *  publically accessible)
+ */
+void register_backend(const backend_families &bf, shared_ptr<AbstractStateGenerator> gen);
+    
+template <class T>
+class GeneratorInitializer{
+public:
+    GeneratorInitializer(backend_families bf){
+        register_backend(bf, shared_ptr<AbstractStateGenerator>(new T()));
+    };
+};
+
 
 } /* namespace CoolProp */
 #endif /* ABSTRACTSTATE_H_ */

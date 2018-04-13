@@ -1,7 +1,4 @@
 {
-  "ALIASES": [
-    "R1234YF"
-  ], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -181,18 +178,6 @@
       ]
     }
   }, 
-  "CAS": "754-12-1", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "A2L", 
-    "FH": 2, 
-    "GWP100": 4.0, 
-    "GWP20": -1.0, 
-    "GWP500": -1.0, 
-    "HH": 1, 
-    "Name": "R1234yf", 
-    "ODP": -1.0, 
-    "PH": 0
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
@@ -227,7 +212,7 @@
           "T_units": "K", 
           "hmolar": 15520.183697391298, 
           "hmolar_units": "J/mol", 
-          "p": 31507.558793673572, 
+          "p": 31507.558848475514, 
           "p_units": "Pa", 
           "rhomolar": 11633.107308831428, 
           "rhomolar_units": "mol/m^3", 
@@ -239,7 +224,7 @@
           "T_units": "K", 
           "hmolar": 37376.03203521745, 
           "hmolar_units": "J/mol", 
-          "p": 31507.69957899591, 
+          "p": 31507.558848475514, 
           "p_units": "Pa", 
           "rhomolar": 17.583605761936976, 
           "rhomolar_units": "mol/m^3", 
@@ -412,8 +397,31 @@
       "pseudo_pure": false
     }
   ], 
-  "NAME": "R1234yf", 
-  "REFPROP_NAME": "R1234YF", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=2057041", 
+    "ALIASES": [
+      "R1234YF"
+    ], 
+    "CAS": "754-12-1", 
+    "CHEMSPIDER_ID": 2057041, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "A2L", 
+      "FH": 2, 
+      "GWP100": 4.0, 
+      "GWP20": -1.0, 
+      "GWP500": -1.0, 
+      "HH": 1, 
+      "Name": "R1234yf", 
+      "ODP": -1.0, 
+      "PH": 0
+    }, 
+    "FORMULA": "C_{3}F_{4}H_{2}",
+    "INCHI_KEY": "FXRLMCRCYDHQFW-UHFFFAOYAB", 
+    "INCHI_STRING": "InChI=1/C3H2F4/c1-2(4)3(5,6)7/h1H2", 
+    "NAME": "R1234yf", 
+    "REFPROP_NAME": "R1234YF", 
+    "SMILES": "C=C(C(F)(F)F)F"
+  }, 
   "STATES": {
     "critical": {
       "T": 367.85, 
@@ -432,7 +440,7 @@
       "T_units": "K", 
       "hmolar": 15520.183697391298, 
       "hmolar_units": "J/mol", 
-      "p": 31507.558793673572, 
+      "p": 31507.558848475514, 
       "p_units": "Pa", 
       "rhomolar": 11633.107308831428, 
       "rhomolar_units": "mol/m^3", 
@@ -444,7 +452,7 @@
       "T_units": "K", 
       "hmolar": 37376.03203521745, 
       "hmolar_units": "J/mol", 
-      "p": 31507.69957899591, 
+      "p": 31507.558848475514, 
       "p_units": "Pa", 
       "rhomolar": 17.583605761936976, 
       "rhomolar_units": "mol/m^3", 
@@ -528,29 +536,50 @@
         "type": "polynomial"
       }
     }, 
-    "viscosity": {
-      "BibTeX": "BELL-PERSONAL-2015", 
-      "_note": "Fit based on the data of Zhao, JCED, 2014: doi: 10.1021/je5001457", 
-      "epsilon_over_k": 281.14, 
-      "epsilon_over_k_units": "K", 
-      "psi": {
-        "a": [
-          0.17682139, 
-          0.74500256, 
-          -0.16912621
+    "viscosity": [
+      {
+        "BibTeX": "Bell-PURDUE-2016-ETA", 
+        "C": 0.87302, 
+        "c_liq": [
+          0.6100913843, 
+          0.4508958312, 
+          -0.017063, 
+          0.000564
         ], 
-        "rhomolar_reducing": 4170.0, 
-        "rhomolar_reducing_units": "mol/m^3", 
-        "t": [
-          0, 
-          1, 
-          2
-        ]
+        "c_vap": [
+          0.0, 
+          1.2, 
+          -0.308598, 
+          0.035317
+        ], 
+        "rhosr_critical": -54468.47741433059, 
+        "type": "rhosr-CS", 
+        "x_crossover": 2
       }, 
-      "reference_fluid": "R134a", 
-      "sigma_eta": 5.328e-10, 
-      "sigma_eta_units": "m", 
-      "type": "ECS"
-    }
+      {
+        "BibTeX": "BELL-PERSONAL-2015", 
+        "_note": "Fit based on the data of Zhao, JCED, 2014: doi: 10.1021/je5001457", 
+        "epsilon_over_k": 281.14, 
+        "epsilon_over_k_units": "K", 
+        "psi": {
+          "a": [
+            0.17682139, 
+            0.74500256, 
+            -0.16912621
+          ], 
+          "rhomolar_reducing": 4170.0, 
+          "rhomolar_reducing_units": "mol/m^3", 
+          "t": [
+            0, 
+            1, 
+            2
+          ]
+        }, 
+        "reference_fluid": "R134a", 
+        "sigma_eta": 5.328e-10, 
+        "sigma_eta_units": "m", 
+        "type": "ECS"
+      }
+    ]
   }
 }

@@ -9,6 +9,7 @@
 #define REFPROPMIXTUREBACKEND_H_
 
 #include "AbstractState.h"
+#include "DataStructures.h"
 
 #include <vector>
 
@@ -45,7 +46,7 @@ public:
     /// A function to actually do the initalization to allow it to be called in derived classes
     void construct(const std::vector<std::string>& fluid_names);
     
-    std::string backend_name(void){return "REFPROPMixtureBackend";}
+    std::string backend_name(void) { return get_backend_string(REFPROP_BACKEND_MIX); }
     virtual ~REFPROPMixtureBackend();
 
 	static std::string version();
@@ -57,8 +58,17 @@ public:
     void set_binary_interaction_double(const std::string &CAS1, const std::string &CAS2, const std::string &parameter, const double value);
     /// Get binary mixture double value
     double get_binary_interaction_double(const std::string &CAS1, const std::string &CAS2, const std::string &parameter);
+
     /// Get binary mixture string value
     std::string get_binary_interaction_string(const std::string &CAS1, const std::string &CAS2, const std::string &parameter);
+    /// Set binary mixture string value
+    void set_binary_interaction_string(const std::size_t i, const std::size_t j, const std::string &parameter, const std::string &value);
+    
+    /// Set binary mixture string parameter (EXPERT USE ONLY!!!)
+    void set_binary_interaction_double(const std::size_t i, const std::size_t j, const std::string &parameter, const double value);
+    /// Get binary mixture double value (EXPERT USE ONLY!!!)
+    double get_binary_interaction_double(const std::size_t i, const std::size_t j, const std::string &parameter);
+
     /// Find the index (1-based for FORTRAN) of the fluid with the given CAS number
     long match_CAS(const std::string &CAS);
 
@@ -66,6 +76,15 @@ public:
     bool using_mole_fractions(){return true;}
     bool using_mass_fractions(){return false;}
     bool using_volu_fractions(){return false;}
+    
+    /** \brief Specify the phase - this phase will always be used in calculations
+     *
+     * @param phase_index The index from CoolProp::phases
+     */
+    void calc_specify_phase(phases phase_index){ imposed_phase_index = phase_index; _phase = phase_index; }
+    /**\brief Unspecify the phase - the phase is no longer imposed, different solvers can do as they like
+     */
+    void calc_unspecify_phase(){ imposed_phase_index = iphase_not_imposed;}
 
     /// Updating function for REFPROP
     /**
@@ -94,6 +113,8 @@ public:
     CoolPropDbl calc_molar_mass(void);
     
     void check_loaded_fluid(void);
+
+    void calc_excess_properties();
 
     /// Returns true if REFPROP is supported on this platform
     static bool REFPROP_supported(void);
@@ -132,8 +153,8 @@ public:
 
     const CoolProp::PhaseEnvelopeData &calc_phase_envelope_data(){return PhaseEnvelope;};
 
-    std::vector<CoolPropDbl> calc_mole_fractions_liquid(void){return std::vector<CoolPropDbl>(mole_fractions_liq.begin(), mole_fractions_liq.end());}
-    std::vector<CoolPropDbl> calc_mole_fractions_vapor(void){return std::vector<CoolPropDbl>(mole_fractions_vap.begin(), mole_fractions_vap.end());}
+    std::vector<CoolPropDbl> calc_mole_fractions_liquid(void){return std::vector<CoolPropDbl>(mole_fractions_liq.begin(), mole_fractions_liq.begin()+this->Ncomp);}
+    std::vector<CoolPropDbl> calc_mole_fractions_vapor(void){return std::vector<CoolPropDbl>(mole_fractions_vap.begin(), mole_fractions_vap.begin()+this->Ncomp);}
 
     /// Check if the mole fractions have been set, etc.
     void check_status();
@@ -151,22 +172,29 @@ public:
 
     CoolPropDbl calc_fugacity_coefficient(std::size_t i);
     CoolPropDbl calc_fugacity(std::size_t i);
+    CoolPropDbl calc_chemical_potential(std::size_t i);
     CoolPropDbl calc_melting_line(int param, int given, CoolPropDbl value);
-    bool has_melting_line(){return true;};
+    bool has_melting_line();
     double calc_melt_Tmax();
     CoolPropDbl calc_T_critical(void);
 	CoolPropDbl calc_T_reducing(void);
+    void calc_reducing_state(void);
     CoolPropDbl calc_p_critical(void);
     CoolPropDbl calc_p_triple(void);
     CoolPropDbl calc_p_min(void){return calc_p_triple();};
     CoolPropDbl calc_rhomolar_critical(void);
 	CoolPropDbl calc_rhomolar_reducing(void);
     CoolPropDbl calc_Ttriple(void);
+    CoolPropDbl calc_acentric_factor(void);
 	CoolPropDbl calc_gas_constant(void);
     CoolPropDbl calc_dipole_moment(void);
 
     /// Calculate the "true" critical point where dp/drho|T and d2p/drho2|T are zero
     void calc_true_critical_point(double &T, double &rho);
+
+	/// Calculate the saturation properties
+	CoolPropDbl calc_saturated_liquid_keyed_output(parameters key);
+	CoolPropDbl calc_saturated_vapor_keyed_output(parameters key);
 
     /// Calculate an ideal curve
     void calc_ideal_curve(const std::string &type, std::vector<double> &T, std::vector<double> &p);

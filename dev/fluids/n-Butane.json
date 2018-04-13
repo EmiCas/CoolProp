@@ -1,11 +1,4 @@
 {
-  "ALIASES": [
-    "nButane", 
-    "butane", 
-    "BUTANE", 
-    "N-BUTANE", 
-    "R600"
-  ], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -204,18 +197,6 @@
       ]
     }
   }, 
-  "CAS": "106-97-8", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "A3", 
-    "FH": 4, 
-    "GWP100": 3.0, 
-    "GWP20": -1.0, 
-    "GWP500": -1.0, 
-    "HH": 1, 
-    "Name": "n-Butane", 
-    "ODP": -1.0, 
-    "PH": 0
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
@@ -250,7 +231,7 @@
           "T_units": "K", 
           "hmolar": -5220.749887455389, 
           "hmolar_units": "J/mol", 
-          "p": 0.6656581039692712, 
+          "p": 0.6656582208078881, 
           "p_units": "Pa", 
           "rhomolar": 12645.062133275149, 
           "rhomolar_units": "mol/m^3", 
@@ -262,7 +243,7 @@
           "T_units": "K", 
           "hmolar": 23603.75338595084, 
           "hmolar_units": "J/mol", 
-          "p": 0.6656588978750391, 
+          "p": 0.6656582208078881, 
           "p_units": "Pa", 
           "rhomolar": 0.0005935027093652988, 
           "rhomolar_units": "mol/m^3", 
@@ -472,9 +453,35 @@
       "pseudo_pure": false
     }
   ], 
-  "FORMULA": "C_{4}H_{10}", 
-  "NAME": "n-Butane", 
-  "REFPROP_NAME": "BUTANE", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=7555", 
+    "ALIASES": [
+      "nButane", 
+      "butane", 
+      "BUTANE", 
+      "N-BUTANE", 
+      "R600"
+    ], 
+    "CAS": "106-97-8", 
+    "CHEMSPIDER_ID": 7555, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "A3", 
+      "FH": 4, 
+      "GWP100": 3.0, 
+      "GWP20": -1.0, 
+      "GWP500": -1.0, 
+      "HH": 1, 
+      "Name": "n-Butane", 
+      "ODP": -1.0, 
+      "PH": 0
+    }, 
+    "FORMULA": "C_{4}H_{10}", 
+    "INCHI_KEY": "IJDNQMDRQITEOD-UHFFFAOYAE", 
+    "INCHI_STRING": "InChI=1/C4H10/c1-3-4-2/h3-4H2,1-2H3", 
+    "NAME": "n-Butane", 
+    "REFPROP_NAME": "BUTANE", 
+    "SMILES": "CCCC"
+  }, 
   "STATES": {
     "critical": {
       "T": 425.125, 
@@ -493,7 +500,7 @@
       "T_units": "K", 
       "hmolar": -5220.749887455389, 
       "hmolar_units": "J/mol", 
-      "p": 0.6656581039692712, 
+      "p": 0.6656582208078881, 
       "p_units": "Pa", 
       "rhomolar": 12645.062133275149, 
       "rhomolar_units": "mol/m^3", 
@@ -505,7 +512,7 @@
       "T_units": "K", 
       "hmolar": 23603.75338595084, 
       "hmolar_units": "J/mol", 
-      "p": 0.6656588978750391, 
+      "p": 0.6656582208078881, 
       "p_units": "Pa", 
       "rhomolar": 0.0005935027093652988, 
       "rhomolar_units": "mol/m^3", 

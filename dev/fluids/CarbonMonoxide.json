@@ -1,8 +1,4 @@
 {
-  "ALIASES": [
-    "CO", 
-    "CARBONMONOXIDE"
-  ], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -197,18 +193,6 @@
       ]
     }
   }, 
-  "CAS": "630-08-0", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "UNKNOWN", 
-    "FH": 4, 
-    "GWP100": -1.0, 
-    "GWP20": -1.0, 
-    "GWP500": -1.0, 
-    "HH": 1, 
-    "Name": "CarbonMonoxide", 
-    "ODP": -1.0, 
-    "PH": 3
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
@@ -243,7 +227,7 @@
           "T_units": "K", 
           "hmolar": -811.0642415436049, 
           "hmolar_units": "J/mol", 
-          "p": 15536.876647615478, 
+          "p": 15536.876656446813, 
           "p_units": "Pa", 
           "rhomolar": 30329.705964719185, 
           "rhomolar_units": "mol/m^3", 
@@ -255,7 +239,7 @@
           "T_units": "K", 
           "hmolar": 5685.903572753587, 
           "hmolar_units": "J/mol", 
-          "p": 15536.906085596978, 
+          "p": 15536.876656446813, 
           "p_units": "Pa", 
           "rhomolar": 27.707486894692664, 
           "rhomolar_units": "mol/m^3", 
@@ -387,9 +371,32 @@
       "pseudo_pure": false
     }
   ], 
-  "FORMULA": "C_{1}O_{1}", 
-  "NAME": "CarbonMonoxide", 
-  "REFPROP_NAME": "CO", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=275", 
+    "ALIASES": [
+      "CO", 
+      "CARBONMONOXIDE"
+    ], 
+    "CAS": "630-08-0", 
+    "CHEMSPIDER_ID": 275, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "UNKNOWN", 
+      "FH": 4, 
+      "GWP100": -1.0, 
+      "GWP20": -1.0, 
+      "GWP500": -1.0, 
+      "HH": 1, 
+      "Name": "CarbonMonoxide", 
+      "ODP": -1.0, 
+      "PH": 3
+    }, 
+    "FORMULA": "C_{1}O_{1}", 
+    "INCHI_KEY": "UGFAIRIUMAVXCW-UHFFFAOYAT", 
+    "INCHI_STRING": "InChI=1/CO/c1-2", 
+    "NAME": "CarbonMonoxide", 
+    "REFPROP_NAME": "CO", 
+    "SMILES": "[C-]#[O+]"
+  }, 
   "STATES": {
     "critical": {
       "T": 132.86, 
@@ -408,7 +415,7 @@
       "T_units": "K", 
       "hmolar": -811.0642415436049, 
       "hmolar_units": "J/mol", 
-      "p": 15536.876647615478, 
+      "p": 15536.876656446813, 
       "p_units": "Pa", 
       "rhomolar": 30329.705964719185, 
       "rhomolar_units": "mol/m^3", 
@@ -420,7 +427,7 @@
       "T_units": "K", 
       "hmolar": 5685.903572753587, 
       "hmolar_units": "J/mol", 
-      "p": 15536.906085596978, 
+      "p": 15536.876656446813, 
       "p_units": "Pa", 
       "rhomolar": 27.707486894692664, 
       "rhomolar_units": "mol/m^3", 

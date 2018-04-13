@@ -1,9 +1,9 @@
 from __future__ import division, print_function
 import numpy as np
 import os, math
-from BaseObjects import IncompressibleData
+from .BaseObjects import IncompressibleData,IncompressibleFitter
 from abc import ABCMeta
-from CPIncomp.BaseObjects import IncompressibleFitter
+
 
 class SolutionData(object):
     """
@@ -19,7 +19,6 @@ class SolutionData(object):
     ifrac_pure      = "pure"
 
     def __init__(self):
-
 
         self.significantDigits = 7
 
@@ -53,7 +52,6 @@ class SolutionData(object):
         #self.viscosity.coeffs = np.array([+7e+2, -6e+1, +1e+1])
         #self.saturation_pressure.type = self.saturation_pressure.INCOMPRESSIBLE_EXPONENTIAL
         #self.saturation_pressure.coeffs = np.array([-5e+3, +3e+1, -1e+1])
-
 
         self.xref = 0.0
         self.Tref = 0.0
@@ -108,7 +106,6 @@ class SolutionData(object):
 #        objList["saturation pressure"] = self.saturation_pressure
 #        return objList
 
-
     def checkT(self, T, p, x):
         if self.Tmin <= 0.: raise ValueError("Please specify the minimum temperature.")
         if self.Tmax <= 0.: raise ValueError("Please specify the maximum temperature.");
@@ -127,7 +124,6 @@ class SolutionData(object):
         else        : return True
         return False
 
-
     def checkX(self, x):
         if (self.xmin < 0.0 or self.xmin > 1.0): raise ValueError("Please specify the minimum concentration between 0 and 1.");
         if (self.xmax < 0.0 or self.xmax > 1.0): raise ValueError("Please specify the maximum concentration between 0 and 1.");
@@ -142,7 +138,6 @@ class SolutionData(object):
             #print("Check failed: {0}".format(ve))
             pass
         return False
-
 
     def rho (self, T, p=0.0, x=0.0, c=None):
         if not self.checkTPX(T, p, x): return np.NAN
@@ -216,12 +211,8 @@ class SolutionData(object):
         else:
             raise ValueError("Unknown function: {0}.".format(self.T_freeze.type))
 
-
-
-
     #def V2M (T,           y);
     #def M2M (T,           x);
-
 
     def h_u(self, T, p, x):
         return self.u(T,p,x)+p/self.rho(T,p,x)-self.href
@@ -246,6 +237,7 @@ class PureData(SolutionData):
     easier to gather data for pure fluids.
     """
     __metaclass__ = ABCMeta
+
     def __init__(self):
         SolutionData.__init__(self)
         self.xbase = 0.0
@@ -261,7 +253,6 @@ class PureData(SolutionData):
             return np.reshape(dataArray, (length,1))
         else:
             return None
-
 
     def reshapeAll(self):
         len_T = len(self.temperature.data)
@@ -283,6 +274,7 @@ class DigitalData(SolutionData):
     as Python packages.
     """
     __metaclass__ = ABCMeta
+
     def __init__(self):
         SolutionData.__init__(self)
 
@@ -397,12 +389,12 @@ class DigitalData(SolutionData):
         return x,y,z[1:,1:]
 
 
-
 class CoefficientData(SolutionData):
     """
     A class to convert parameter arrays from different other sources
     """
     __metaclass__ = ABCMeta
+
     def __init__(self):
         SolutionData.__init__(self)
         self.reference = "Some other software"
@@ -449,7 +441,6 @@ class CoefficientData(SolutionData):
 
         return tmp
 
-
     def convertSecCoolTfreeze(self, array):
         expo = -1.0
         for i in range(len(array)):
@@ -457,8 +448,6 @@ class CoefficientData(SolutionData):
         array[1] = array[1] + 273.15
         #self.T_freeze.type = self.T_freeze.INCOMPRESSIBLE_POLYOFFSET
         return array
-
-
 
     def convertMelinderArray(self, array):
         """The same function as the SecCool converter,
@@ -535,8 +524,6 @@ class CoefficientData(SolutionData):
 
         return tmp
 
-
-
     def setMelinderMatrix(self, matrix):
 #        matrix = np.array([
 #        [-26.29           , 958.1           ,3887           ,   0.4175            ,   1.153           ],
@@ -584,14 +571,3 @@ class CoefficientData(SolutionData):
         self.viscosity.type = self.viscosity.INCOMPRESSIBLE_EXPPOLYNOMIAL
         self.viscosity.coeffs = self.convertMelinderArray(coeffs[4])
         self.viscosity.coeffs[0,0] -= math.log(1000) # Fixes the units mPa s -> Pa s
-
-
-
-
-
-
-
-
-
-
-

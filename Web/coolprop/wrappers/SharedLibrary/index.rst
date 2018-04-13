@@ -21,6 +21,8 @@ Pre-Compiled Binaries
 
 Download the appropriate shared library for your architecture from from :sfdownloads:`shared_library`, or the development versions from the buildbot server at :sfnightly:`shared_library`.
 
+Users of the Borland compiler might find these instructions useful for using Visual Studio compiled shared libraries with Borland compiler: http://bcbjournal.org/articles/vol4/0012/Using_Visual_C_DLLs_with_CBuilder.htm
+
 User-Compiled Binaries
 ======================
 
@@ -145,3 +147,89 @@ On Linux, installation could be done by::
     sudo ln -sf libCoolProp.so.32.:version: libCoolProp.so.5
     sudo ln -sf libCoolProp.so.5 libCoolProp.so
     popd
+
+
+Using
+=====
+
+Windows
+-------
+
+Here is a small example for calling the shared library from C on windows, as contributed by Philipp Rollmann, Guentner::
+
+    #include "windows.h"
+    #include "stdio.h"
+    int main(){
+        // Define DLL functions
+        typedef double (WINAPI *Props1SI)(char Refrigerant[20], char PropertyToReturn[20]);
+        typedef double (WINAPI *PropsSI)(char PropertyToReturn[20], char InputProperty1[20], double InputValue1, char InputProperty2[20], double InputValue2, char Refrigerant[20]);
+
+        // addresses
+        Props1SI Props1SIAddress;
+        PropsSI PropsSIAddress;
+        double result1, result2;
+
+        // load DLL; change this path as needed
+        HINSTANCE CoolPropDll = LoadLibraryA("C:\\CoolProp\\CoolProp.dll");
+
+        if (CoolPropDll)
+        {
+             // addresses
+             Props1SIAddress = (Props1SI) GetProcAddress(CoolPropDll, "_Props1SI@8");
+             PropsSIAddress = (PropsSI) GetProcAddress(CoolPropDll, "_PropsSI@32");
+             // call function
+             if (Props1SIAddress && PropsSIAddress)
+             {
+                    result1 = (*Props1SIAddress) ("R410A", "Tcrit");
+                    printf("R410A Tcrit: %g\n", result1);
+                    result2 = (*PropsSIAddress) ("Dmass", "T", 298.15, "P", 101325, "R410A");
+                    printf("R410A density: %g\n", result2);
+             }
+
+             // unload DLL
+             FreeLibrary(CoolPropDll);
+        }
+        else{
+            printf("Could not load CoolProp DLL.");
+        }
+    }
+    
+Here is another snippet of using the shared library in windows when (for your application), you MUST use a Visual Studio 32-bit stdcall dll of CoolProp for compatibility with other tools::
+
+    // This is to get all the function prototypes from the header
+    #define EXPORT_CODE extern "C" __declspec(dllimport)
+    #define CONVENTION __stdcall
+    #include "CoolPropLib.h"
+    #undef EXPORT_CODE
+    #undef CONVENTION
+
+    #include <iostream>
+    //---------------------------------------------------------------------------
+    int main(int argc, char* argv[])
+    {
+        std::cout << PropsSI("T","P",101325,"Q",0,"Water") << std::endl;
+        return 1;
+    }
+
+    
+Linux
+-----
+
+Based on the discussion on `GitHub <https://github.com/CoolProp/CoolProp/issues/1600>`_, you can use the following steps to link against the CoolProp libraries::
+
+    cat <<EOF > main.cpp
+    #include <iostream>
+    #include "CoolPropLib.h"
+    int main(){
+        double T{293.15};
+        double P{1e5};
+        //double res{0.0};
+        double res{PropsSI("D", "T", T, "P", P, "Water")};
+        std::cout << "Density: " << res << std::endl;
+    }
+
+    EOF
+    g++ -std=c++11 -Wall -O2 -o main -DCOOLPROP_LIB -I../include main.cpp libCoolProp.so -ldl
+    LD_LIBRARY_PATH=`pwd` ./main
+
+

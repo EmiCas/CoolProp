@@ -1,9 +1,4 @@
 {
-  "ALIASES": [
-    "neon", 
-    "NEON", 
-    "R720"
-  ], 
   "ANCILLARIES": {
     "hL": {
       "A": [
@@ -202,18 +197,6 @@
       ]
     }
   }, 
-  "CAS": "7440-01-9", 
-  "ENVIRONMENTAL": {
-    "ASHRAE34": "A1", 
-    "FH": 0, 
-    "GWP100": -1.0, 
-    "GWP20": -1.0, 
-    "GWP500": -1.0, 
-    "HH": 0, 
-    "Name": "Neon", 
-    "ODP": -1.0, 
-    "PH": 0
-  }, 
   "EOS": [
     {
       "BibTeX_CP0": "", 
@@ -248,7 +231,7 @@
           "T_units": "K", 
           "hmolar": -99.25879078072767, 
           "hmolar_units": "J/mol", 
-          "p": 43432.07641797132, 
+          "p": 43432.07640274344, 
           "p_units": "Pa", 
           "rhomolar": 62061.106062440806, 
           "rhomolar_units": "mol/m^3", 
@@ -260,7 +243,7 @@
           "T_units": "K", 
           "hmolar": 1678.9364580546537, 
           "hmolar_units": "J/mol", 
-          "p": 43432.158660718436, 
+          "p": 43432.07640274344, 
           "p_units": "Pa", 
           "rhomolar": 220.11019693171068, 
           "rhomolar_units": "mol/m^3", 
@@ -268,7 +251,7 @@
           "smolar_units": "J/mol/K"
         }
       }, 
-      "T_max": 723, 
+      "T_max": 700, 
       "T_max_units": "K", 
       "Ttriple": 24.56, 
       "Ttriple_units": "K", 
@@ -448,9 +431,33 @@
       "pseudo_pure": false
     }
   ], 
-  "FORMULA": "Ne_{1}", 
-  "NAME": "Neon", 
-  "REFPROP_NAME": "NEON", 
+  "INFO": {
+    "2DPNG_URL": "http://www.chemspider.com/ImagesHandler.ashx?id=22377", 
+    "ALIASES": [
+      "neon", 
+      "NEON", 
+      "R720"
+    ], 
+    "CAS": "7440-01-9", 
+    "CHEMSPIDER_ID": 22377, 
+    "ENVIRONMENTAL": {
+      "ASHRAE34": "A1", 
+      "FH": 0, 
+      "GWP100": -1.0, 
+      "GWP20": -1.0, 
+      "GWP500": -1.0, 
+      "HH": 0, 
+      "Name": "Neon", 
+      "ODP": -1.0, 
+      "PH": 0
+    }, 
+    "FORMULA": "Ne_{1}", 
+    "INCHI_KEY": "GKAOGPIIYCISHV-UHFFFAOYAG", 
+    "INCHI_STRING": "InChI=1/Ne", 
+    "NAME": "Neon", 
+    "REFPROP_NAME": "NEON", 
+    "SMILES": "[Ne]"
+  }, 
   "STATES": {
     "critical": {
       "T": 44.491800000000005, 
@@ -469,7 +476,7 @@
       "T_units": "K", 
       "hmolar": -99.25879078072767, 
       "hmolar_units": "J/mol", 
-      "p": 43432.07641797132, 
+      "p": 43432.07640274344, 
       "p_units": "Pa", 
       "rhomolar": 62061.106062440806, 
       "rhomolar_units": "mol/m^3", 
@@ -481,7 +488,7 @@
       "T_units": "K", 
       "hmolar": 1678.9364580546537, 
       "hmolar_units": "J/mol", 
-      "p": 43432.158660718436, 
+      "p": 43432.07640274344, 
       "p_units": "Pa", 
       "rhomolar": 220.11019693171068, 
       "rhomolar_units": "mol/m^3", 

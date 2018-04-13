@@ -1,6 +1,6 @@
 # This file is embedded directly in CoolProp.pyx
 
-cimport constants_header
+from . cimport constants_header
         
 cdef class PyPhaseEnvelopeData:
     pass
@@ -19,6 +19,9 @@ cdef class PyGuessesStructure:
         self.rhomolar_vap = get_HUGE()
         self.x = []
         self.y = []
+
+cdef class PySpinodalData:
+    pass
     
 cdef class AbstractState:
     """
@@ -36,8 +39,14 @@ cdef class AbstractState:
         return self.thisptr.fluid_param_string(key)    
         
     cpdef name(self):
-        """ Get the backend name - wrapper of c++ function :cpapi:`CoolProp::AbstractState::name` """
+        """ Get the fluid name - wrapper of c++ function :cpapi:`CoolProp::AbstractState::name` """
         return self.thisptr.name()
+    cpdef backend_name(self):
+        """ Get the backend name - wrapper of c++ function :cpapi:`CoolProp::AbstractState::backend_name` """
+        return self.thisptr.backend_name()
+    cpdef fluid_names(self):
+        """ Get the list of fluid names - wrapper of c++ function :cpapi:`CoolProp::AbstractState::fluid_names` """
+        return self.thisptr.fluid_names()
         
     cpdef constants_header.phases phase(self) except *:
         """ Get the phase as key value- wrapper of c++ function :cpapi:`CoolProp::AbstractState::phase` """
@@ -54,19 +63,42 @@ cdef class AbstractState:
         """ Change the EOS for one component - wrapper of c++ function :cpapi:`CoolProp::AbstractState::change_EOS` """
         self.thisptr.change_EOS(i, EOS_name)
 
-    cpdef set_binary_interaction_double(self, string CAS1, string CAS2, string parameter, double val):
+    cpdef apply_simple_mixing_rule(self, size_t i, size_t j, string model):
+        """ Apply a simple mixing rule - wrapper of c++ function :cpapi:`CoolProp::AbstractState::apply_simple_mixing_rule` """
+        self.thisptr.apply_simple_mixing_rule(i, j, model)
+
+    cpdef set_binary_interaction_double(self, string_or_size_t CAS1, string_or_size_t CAS2, string parameter, double val):
         """ Set a double precision interaction parameter - wrapper of c++ function :cpapi:`CoolProp::AbstractState::set_binary_interaction_double` """
-        self.thisptr.set_binary_interaction_double(CAS1, CAS2, parameter, val)
-    cpdef set_binary_interaction_string(self, string CAS1, string CAS2, string parameter, string val):
-        """ Set a string interaction parameter - wrapper of c++ function :cpapi:`CoolProp::AbstractState::set_binary_interaction_string` """
-        self.thisptr.set_binary_interaction_string(CAS1, CAS2, parameter, val)
-    cpdef double get_binary_interaction_double(self, string CAS1, string CAS2, string parameter) except *:
+        if string_or_size_t in cython.integral:
+            self.thisptr.set_binary_interaction_double(<size_t>CAS1, <size_t>CAS2, parameter, val)
+        else:  
+            self.thisptr.set_binary_interaction_double(<string>CAS1, <string>CAS2, parameter, val)
+    cpdef double get_binary_interaction_double(self, string_or_size_t CAS1, string_or_size_t CAS2, string parameter) except *:
         """ Get a double precision interaction parameter - wrapper of c++ function :cpapi:`CoolProp::AbstractState::get_binary_interaction_double` """
-        return self.thisptr.get_binary_interaction_double(CAS1, CAS2, parameter)
+        if string_or_size_t in cython.integral:
+            return self.thisptr.get_binary_interaction_double(<size_t>CAS1, <size_t>CAS2, parameter)
+        else:
+            return self.thisptr.get_binary_interaction_double(<string>CAS1, <string>CAS2, parameter)
+
+    cpdef set_binary_interaction_string(self, string_or_size_t CAS1, string_or_size_t CAS2, string parameter, string val):
+        """ Set a string interaction parameter - wrapper of c++ function :cpapi:`CoolProp::AbstractState::set_binary_interaction_string` """
+        if string_or_size_t in cython.integral:
+            self.thisptr.set_binary_interaction_string(<size_t>CAS1, <size_t>CAS2, parameter, val)
+        else:  
+            self.thisptr.set_binary_interaction_string(<string>CAS1, <string>CAS2, parameter, val)
+            
     cpdef string get_binary_interaction_string(self, string CAS1, string CAS2, string parameter) except *:
         """ Get a string interaction parameter - wrapper of c++ function :cpapi:`CoolProp::AbstractState::get_binary_interaction_string` """
         return self.thisptr.get_binary_interaction_string(CAS1, CAS2, parameter)
-    
+
+    cpdef set_fluid_parameter_double(self, size_t i, string parameter, double val):
+        """ Set a fluid parameter that is a double-precision number - wrapper of c++ function :cpapi:`CoolProp::AbstractState::set_fluid_parameter_double` """
+        self.thisptr.set_fluid_parameter_double(i, parameter, val)
+
+    cpdef double get_fluid_parameter_double(self, size_t i, string parameter) except *:
+        """ Get a fluid parameter that is a double-precision number - wrapper of c++ function :cpapi:`CoolProp::AbstractState::get_fluid_parameter_double` """
+        return self.thisptr.get_fluid_parameter_double(i, parameter)
+
     cpdef update(self, constants_header.input_pairs ipair, double Value1, double Value2):
         """ Update function - wrapper of c++ function :cpapi:`CoolProp::AbstractState::update` """
         self.thisptr.update(ipair, Value1, Value2)
@@ -144,6 +176,26 @@ cdef class AbstractState:
             pypt.rhomolar = pt.rhomolar
             collection.append(pypt)
         return collection
+    cpdef tuple criticality_contour_values(self):
+        """ 
+        Gets the criticality matrix values L1* and M1* - wrapper of c++ function :cpapi:`CoolProp::AbstractState::criticality_values` 
+        Returns a tuple of (L1*, M1*)
+        """
+        cdef CoolPropDbl L1star = 0, M1star = 0
+        self.thisptr.criticality_contour_values(L1star, M1star)
+        return L1star, M1star
+
+    cpdef build_spinodal(self):
+        """ Calculate the spinodal - wrapper of c++ function :cpapi:`CoolProp::AbstractState::build_spinodal` """
+        self.thisptr.build_spinodal()
+    cpdef PySpinodalData get_spinodal_data(self):
+        """ Get the data from the spinodal - wrapper of c++ function :cpapi:`CoolProp::AbstractState::get_spinodal_data` """
+        cdef cAbstractState.SpinodalData data = self.thisptr.get_spinodal_data()
+        cdef PySpinodalData out = PySpinodalData()
+        out.tau = data.tau
+        out.delta = data.delta
+        out.M1 = data.M1
+        return out
         
     ## Reducing point
     cpdef double T_reducing(self) except *:
@@ -165,17 +217,21 @@ cdef class AbstractState:
     ##        Fluid property accessors
     ## ----------------------------------------
     
+    cpdef double get_fluid_constant(self, size_t i,constants_header.parameters param) except *:
+        """ Get a constant for a fluid in the mixture :cpapi:`CoolProp::AbstractState::get_fluid_constant` """
+        return self.thisptr.get_fluid_constant(i, param)
+
     cpdef double keyed_output(self, parameters iOutput) except *: 
-        """ Update :cpapi:`CoolProp::AbstractState::keyed_output(parameters key)` """
+        """ Get a keyed output :cpapi:`CoolProp::AbstractState::keyed_output(parameters key)` """
         return self.thisptr.keyed_output(iOutput)
     cpdef double trivial_keyed_output(self, parameters iOutput) except *: 
-        """ Update :cpapi:`CoolProp::AbstractState::trivial_keyed_output(parameters key)` """
+        """ Get a trivial keyed output not requiring any iteration :cpapi:`CoolProp::AbstractState::trivial_keyed_output(parameters key)` """
         return self.thisptr.trivial_keyed_output(iOutput)
     cpdef double saturated_liquid_keyed_output(self, parameters iOutput) except *: 
-        """ Update :cpapi:`CoolProp::AbstractState::saturated_liquid_keyed_output(parameters key)` """
+        """ Get a trivial output for the saturated liquid :cpapi:`CoolProp::AbstractState::saturated_liquid_keyed_output(parameters key)` """
         return self.thisptr.saturated_liquid_keyed_output(iOutput)
     cpdef double saturated_vapor_keyed_output(self, parameters iOutput) except *: 
-        """ Update :cpapi:`CoolProp::AbstractState::saturated_vapor_keyed_output(parameters key)` """
+        """ Get a trivial output for the saturated vapor :cpapi:`CoolProp::AbstractState::saturated_vapor_keyed_output(parameters key)` """
         return self.thisptr.saturated_vapor_keyed_output(iOutput)
     
     cpdef double T(self) except *: 
@@ -229,6 +285,18 @@ cdef class AbstractState:
     cpdef double cvmass(self) except *: 
         """ Get the constant volume specific heat in J/kg/K - wrapper of c++ function :cpapi:`CoolProp::AbstractState::cvmass(void)` """
         return self.thisptr.cvmass()
+    cpdef double gibbsmass(self) except *: 
+        """ Get the mass-specific Gibbs energy in J/kg - wrapper of c++ function :cpapi:`CoolProp::AbstractState::gibbsmass(void)` """
+        return self.thisptr.gibbsmass()
+    cpdef double gibbsmolar(self) except *: 
+        """ Get the mole-specific Gibbs energy in J/mol - wrapper of c++ function :cpapi:`CoolProp::AbstractState::gibbsmolar(void)` """
+        return self.thisptr.gibbsmolar()
+    cpdef double helmholtzmass(self) except *: 
+        """ Get the mass-specific Helmholtz energy in J/kg - wrapper of c++ function :cpapi:`CoolProp::AbstractState::helmholtzmass(void)` """
+        return self.thisptr.helmholtzmass()
+    cpdef double helmholtzmolar(self) except *: 
+        """ Get the mole-specific Helmholtz energy in J/mol - wrapper of c++ function :cpapi:`CoolProp::AbstractState::helmholtzmolar(void)` """
+        return self.thisptr.helmholtzmolar()
     cpdef double tau(self) except *: 
         """ Get the reciprocal reduced temperature - wrapper of c++ function :cpapi:`CoolProp::AbstractState::tau(void)` """
         return self.thisptr.tau()
@@ -243,7 +311,7 @@ cdef class AbstractState:
         return self.thisptr.molar_mass()
     cpdef double acentric_factor(self) except *: 
         """ Get the acentric factor - wrapper of c++ function :cpapi:`CoolProp::AbstractState::acentric_factor(void)` """
-        return self.thisptr.molar_mass()
+        return self.thisptr.acentric_factor()
     cpdef double gas_constant(self) except *: 
         """ Get the gas constant in J/mol/K - wrapper of c++ function :cpapi:`CoolProp::AbstractState::gas_constant(void)` """
         return self.thisptr.gas_constant()
@@ -265,6 +333,9 @@ cdef class AbstractState:
     cpdef double Cvirial(self) except *: 
         """ Get the C virial coefficient - wrapper of c++ function :cpapi:`CoolProp::AbstractState::Cvirial(void)` """
         return self.thisptr.Cvirial()
+    cpdef double fundamental_derivative_of_gas_dynamics(self) except *: 
+        """ Get the fundamental derivative of gas dynamics - wrapper of c++ function :cpapi:`CoolProp::AbstractState::fundamental_derivative_of_gas_dynamics(void)` """
+        return self.thisptr.fundamental_derivative_of_gas_dynamics()
     cpdef double PIP(self) except *: 
         """ Get the phase identification parameter - wrapper of c++ function :cpapi:`CoolProp::AbstractState::PIP(void)` """
         return self.thisptr.PIP()
@@ -280,6 +351,9 @@ cdef class AbstractState:
     cpdef double fugacity_coefficient(self, size_t i) except *: 
         """ Get the fugacity coefficient of the i-th component - wrapper of c++ function :cpapi:`CoolProp::AbstractState::fugacity_coefficient(std::size_t)` """
         return self.thisptr.fugacity_coefficient(i)
+    cpdef double chemical_potential(self, size_t i) except *: 
+        """ Get the chemical potential of the i-th component - wrapper of c++ function :cpapi:`CoolProp::AbstractState::chemical_potential(std::size_t)` """
+        return self.thisptr.chemical_potential(i)
     
     cpdef mole_fractions_liquid(self):
         """ Get the mole fractions of the liquid phase - wrapper of c++ function :cpapi:`CoolProp::AbstractState::mole_fractions_liquid(void)` """
@@ -308,6 +382,45 @@ cdef class AbstractState:
         cdef CoolPropDbl dilute = 0, initial_density = 0, residual = 0, critical = 0
         self.thisptr.viscosity_contributions(dilute, initial_density, residual, critical)
         return dict(dilute = dilute, initial_density = initial_density, residual = residual, critical = critical)
+
+
+    cpdef double helmholtzmolar_excess(self) except *: 
+        """ Get the mole-specific excess Helmholtz energy in J/mol - wrapper of c++ function :cpapi:`CoolProp::AbstractState::helmholtzmolar_excess(void)` """
+        return self.thisptr.helmholtzmolar_excess()
+    cpdef double helmholtzmass_excess(self) except *: 
+        """ Get the mass-specific excess Helmholtz energy in J/kg - wrapper of c++ function :cpapi:`CoolProp::AbstractState::helmholtzmass_excess(void)` """
+        return self.thisptr.helmholtzmass_excess()
+    cpdef double gibbsmolar_excess(self) except *: 
+        """ Get the mole-specific excess Gibbs energy in J/mol - wrapper of c++ function :cpapi:`CoolProp::AbstractState::gibbsmolar_excess(void)` """
+        return self.thisptr.gibbsmolar_excess()
+    cpdef double gibbsmass_excess(self) except *: 
+        """ Get the mass-specific excess Gibbs energy in J/kg - wrapper of c++ function :cpapi:`CoolProp::AbstractState::gibbsmass_excess(void)` """
+        return self.thisptr.gibbsmass_excess()
+    cpdef double umolar_excess(self) except *: 
+        """ Get the mole-specific excess internal energy in J/mol - wrapper of c++ function :cpapi:`CoolProp::AbstractState::umolar_excess(void)` """
+        return self.thisptr.umolar_excess()
+    cpdef double umass_excess(self) except *: 
+        """ Get the mass-specific excess internal energy in J/kg - wrapper of c++ function :cpapi:`CoolProp::AbstractState::umass_excess(void)` """
+        return self.thisptr.umass_excess()
+    cpdef double hmolar_excess(self) except *: 
+        """ Get the mole-specific excess enthalpy in J/mol - wrapper of c++ function :cpapi:`CoolProp::AbstractState::hmolar_excess(void)` """
+        return self.thisptr.hmolar_excess()
+    cpdef double hmass_excess(self) except *: 
+        """ Get the mass-specific excess enthalpy in J/kg - wrapper of c++ function :cpapi:`CoolProp::AbstractState::hmass_excess(void)` """
+        return self.thisptr.hmass_excess()
+    cpdef double smolar_excess(self) except *: 
+        """ Get the mole-specific excess entropy in J/mol/K - wrapper of c++ function :cpapi:`CoolProp::AbstractState::smolar_excess(void)` """
+        return self.thisptr.smolar_excess()
+    cpdef double smass_excess(self) except *: 
+        """ Get the mass-specific excess entropy in J/kg/K - wrapper of c++ function :cpapi:`CoolProp::AbstractState::smass_excess(void)` """
+        return self.thisptr.smass_excess()
+    cpdef double volumemolar_excess(self) except *: 
+        """ Get the mole-specific excess volume in m^3/mol - wrapper of c++ function :cpapi:`CoolProp::AbstractState::volumemolar_excess(void)` """
+        return self.thisptr.volumemolar_excess()
+    cpdef double volumemass_excess(self) except *: 
+        """ Get the mass-specific excess volume in m^3/kg - wrapper of c++ function :cpapi:`CoolProp::AbstractState::volumemass_excess(void)` """
+        return self.thisptr.volumemass_excess()
+
 
     ## ----------------------------------------	
     ##        Derivatives
@@ -372,6 +485,9 @@ cdef class AbstractState:
         pe_out.iTsat_max = pe_data.iTsat_max
         pe_out.ipsat_max = pe_data.ipsat_max
         pe_out.TypeI = pe_data.TypeI
+        pe_out.x = pe_data.x
+        pe_out.y = pe_data.y
+        pe_out.K = pe_data.K
         return pe_out
         
     ## -----------------------------------------
@@ -449,3 +565,18 @@ cdef class AbstractState:
     cpdef CoolPropDbl d3alphar_dDelta3(self) except *:
         """ Get the residual reduced Helmholtz energy - wrapper of c++ function :cpapi:`CoolProp::AbstractState::d3alphar_dDelta3` """
         return self.thisptr.d3alphar_dDelta3()
+    cpdef CoolPropDbl d4alphar_dTau4(self) except *:
+        """ Get the residual reduced Helmholtz energy - wrapper of c++ function :cpapi:`CoolProp::AbstractState::d4alphar_dTau4` """
+        return self.thisptr.d4alphar_dTau4()
+    cpdef CoolPropDbl d4alphar_dDelta_dTau3(self) except *:
+        """ Get the residual reduced Helmholtz energy - wrapper of c++ function :cpapi:`CoolProp::AbstractState::d4alphar_dDelta_dTau3` """
+        return self.thisptr.d4alphar_dDelta_dTau3()
+    cpdef CoolPropDbl d4alphar_dDelta2_dTau2(self) except *:
+        """ Get the residual reduced Helmholtz energy - wrapper of c++ function :cpapi:`CoolProp::AbstractState::d4alphar_dDelta2_dTau2` """
+        return self.thisptr.d4alphar_dDelta2_dTau2()
+    cpdef CoolPropDbl d4alphar_dDelta3_dTau(self) except *:
+        """ Get the residual reduced Helmholtz energy - wrapper of c++ function :cpapi:`CoolProp::AbstractState::d4alphar_dDelta3_dTau` """
+        return self.thisptr.d4alphar_dDelta3_dTau()
+    cpdef CoolPropDbl d4alphar_dDelta4(self) except *:
+        """ Get the residual reduced Helmholtz energy - wrapper of c++ function :cpapi:`CoolProp::AbstractState::d4alphar_dDelta4` """
+        return self.thisptr.d4alphar_dDelta4()

@@ -2,15 +2,16 @@ from libcpp cimport bool
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 
-cimport constants_header
+from . cimport constants_header
 
-from typedefs cimport CoolPropDbl
+from .typedefs cimport CoolPropDbl
 
 cdef extern from "PhaseEnvelope.h" namespace "CoolProp":
     cdef cppclass PhaseEnvelopeData:
         bool TypeI
         size_t iTsat_max, ipsat_max, icrit
         vector[double] T, p, lnT, lnp, rhomolar_liq, rhomolar_vap, lnrhomolar_liq, lnrhomolar_vap, hmolar_liq, hmolar_vap, smolar_liq, smolar_vap, Q
+        vector[vector[double]] x, y, K
     
 cdef extern from "DataStructures.h" namespace "CoolProp":
     cdef cppclass CriticalState:
@@ -24,6 +25,9 @@ cdef extern from "AbstractState.h" namespace "CoolProp":
         double rhomolar_liq, rhomolar_vap
         double _rhomolar_liq, _rhomolar_vap
         vector[double] x, y
+
+    cdef cppclass SpinodalData:
+        vector[double] tau, delta, M1
         
     cdef cppclass AbstractState:
         
@@ -52,9 +56,18 @@ cdef extern from "AbstractState.h" namespace "CoolProp":
         void set_binary_interaction_string(const string &, const string &, const string &, const string &) except +ValueError
         double get_binary_interaction_double(const string &, const string &, const string &) except +ValueError
         string get_binary_interaction_string(const string &, const string &, const string &) except +ValueError
+        void set_binary_interaction_string(const size_t, const size_t, const string &, const string &) except +ValueError
+        void apply_simple_mixing_rule(size_t, size_t, const string &) except +ValueError
+        
+        double get_binary_interaction_double(const size_t, const size_t, const string &) except +ValueError
+        void set_binary_interaction_double(const size_t, const size_t, const string &, const double s) except +ValueError
         
         string name() except +ValueError
+        string backend_name() except +ValueError
+        vector[string] fluid_names() except +ValueError
         string fluid_param_string(const string &) except +ValueError
+        void set_fluid_parameter_double(const size_t, const string&, const double) except +ValueError
+        double get_fluid_parameter_double(const size_t, const string&) except +ValueError
         
         bool clear()
         
@@ -70,6 +83,11 @@ cdef extern from "AbstractState.h" namespace "CoolProp":
         double rhomolar_critical() except +ValueError
         double p_critical() except +ValueError
         vector[CriticalState] all_critical_points() except +ValueError
+        void criticality_contour_values(double &L1star, double &M1star) except +ValueError
+
+        ## Spinodal curve
+        void build_spinodal() except +ValueError
+        SpinodalData get_spinodal_data() except +ValueError
         
         ## Tangent plane analysis
         double tangent_plane_distance(const double, const double, const vector[double], const double) except +ValueError
@@ -107,6 +125,10 @@ cdef extern from "AbstractState.h" namespace "CoolProp":
         double cp0mass() except +ValueError
         double cvmolar() except +ValueError
         double cvmass() except +ValueError
+        double gibbsmolar() except +ValueError
+        double gibbsmass() except +ValueError
+        double helmholtzmolar() except +ValueError
+        double helmholtzmass() except +ValueError
         double speed_sound() except +ValueError
         double tau() except +ValueError
         double delta() except +ValueError
@@ -116,16 +138,32 @@ cdef extern from "AbstractState.h" namespace "CoolProp":
         void conductivity_contributions(CoolPropDbl &dilute, CoolPropDbl &initial_density, CoolPropDbl &residual, CoolPropDbl &critical) except +ValueError
         void viscosity_contributions(CoolPropDbl &dilute, CoolPropDbl &initial_density, CoolPropDbl &residual, CoolPropDbl &critical) except +ValueError
 
+        double gibbsmolar_excess() except +ValueError
+        double gibbsmass_excess() except +ValueError
+        double hmolar_excess() except +ValueError
+        double hmass_excess() except +ValueError
+        double smolar_excess() except +ValueError
+        double smass_excess() except +ValueError
+        double umolar_excess() except +ValueError
+        double umass_excess() except +ValueError
+        double volumemolar_excess() except +ValueError
+        double volumemass_excess() except +ValueError
+        double helmholtzmolar_excess() except +ValueError
+        double helmholtzmass_excess() except +ValueError
+
         double surface_tension() except+ValueError
         double Prandtl() except +ValueError
         double Bvirial() except +ValueError
         double Cvirial() except +ValueError
         double PIP() except +ValueError
+        double fundamental_derivative_of_gas_dynamics() except +ValueError
         double isothermal_compressibility() except +ValueError
         double isobaric_expansion_coefficient() except +ValueError
         double fugacity(size_t) except +ValueError
         double fugacity_coefficient(size_t) except +ValueError
+        double chemical_potential(size_t) except +ValueError
         
+        double get_fluid_constant(size_t,constants_header.parameters) except+ValueError
         double keyed_output(constants_header.parameters) except+ValueError
         double trivial_keyed_output(constants_header.parameters) except+ValueError
         double saturated_liquid_keyed_output(constants_header.parameters) except+ValueError
@@ -173,6 +211,12 @@ cdef extern from "AbstractState.h" namespace "CoolProp":
         CoolPropDbl d3alphar_dDelta2_dTau() except+ValueError
         CoolPropDbl d3alphar_dDelta_dTau2() except+ValueError
         CoolPropDbl d3alphar_dTau3() except+ValueError
+        CoolPropDbl d4alphar_dDelta4() except+ValueError
+        CoolPropDbl d4alphar_dDelta3_dTau() except+ValueError
+        CoolPropDbl d4alphar_dDelta2_dTau2() except+ValueError
+        CoolPropDbl d4alphar_dDelta_dTau3() except+ValueError
+        CoolPropDbl d4alphar_dTau4() except+ValueError
+
 
 # The static factory method for the AbstractState
 cdef extern from "AbstractState.h" namespace "CoolProp::AbstractState":

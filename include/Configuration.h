@@ -5,7 +5,7 @@
 #include "CoolPropTools.h"
 
 #if !defined(SWIG) // Hide this for swig - Swig gets confused
-#include "rapidjson/rapidjson_include.h"
+#include "rapidjson_include.h"
 #endif
 
 /* See http://stackoverflow.com/a/148610
@@ -26,10 +26,26 @@
     X(ALTERNATIVE_TABLES_DIRECTORY, "ALTERNATIVE_TABLES_DIRECTORY", "", "If provided, this path will be the root directory for the tabular data.  Otherwise, ${HOME}/.CoolProp/Tables is used") \
     X(ALTERNATIVE_REFPROP_PATH, "ALTERNATIVE_REFPROP_PATH", "", "An alternative path to be provided to the directory that contains REFPROP's fluids and mixtures directories.  If provided, the SETPATH function will be called with this directory prior to calling any REFPROP functions.") \
     X(ALTERNATIVE_REFPROP_HMX_BNC_PATH, "ALTERNATIVE_REFPROP_HMX_BNC_PATH", "", "An alternative path to the HMX.BNC file.  If provided, it will be passed into REFPROP's SETUP or SETMIX routines") \
+    X(ALTERNATIVE_REFPROP_LIBRARY_PATH, "ALTERNATIVE_REFPROP_LIBRARY_PATH", "", "An alternative path to the shared library file.  If provided, it will be used to load REFPROP") \
     X(REFPROP_DONT_ESTIMATE_INTERACTION_PARAMETERS, "REFPROP_DONT_ESTIMATE_INTERACTION_PARAMETERS", false, "If true, if the binary interaction parameters in REFPROP are estimated, throw an error rather than silently continuing") \
+    X(REFPROP_IGNORE_ERROR_ESTIMATED_INTERACTION_PARAMETERS, "REFPROP_IGNORE_ERROR_ESTIMATED_INTERACTION_PARAMETERS", false, "If true, if the binary interaction parameters in REFPROP are unable to be estimated, silently continue rather than failing") \
+    X(REFPROP_USE_GERG, "REFPROP_USE_GERG", false, "If true, rather than using the highly-accurate pure fluid equations of state, use the pure-fluid EOS from GERG-2008") \
+    X(REFPROP_USE_PENGROBINSON, "REFPROP_USE_PENGROBINSON", false, "If true, rather than using the highly-accurate pure fluid equations of state, use the Peng-Robinson EOS") \
     X(MAXIMUM_TABLE_DIRECTORY_SIZE_IN_GB, "MAXIMUM_TABLE_DIRECTORY_SIZE_IN_GB", 1.0, "The maximum allowed size of the directory that is used to store tabular data") \
     X(DONT_CHECK_PROPERTY_LIMITS, "DONT_CHECK_PROPERTY_LIMITS", false, "If true, when possible, CoolProp will skip checking whether values are inside the property limits") \
 	X(HENRYS_LAW_TO_GENERATE_VLE_GUESSES, "HENRYS_LAW_TO_GENERATE_VLE_GUESSES", false, "If true, when doing water-based mixture dewpoint calculations, use Henry's Law to generate guesses for liquid-phase composition") \
+    X(PHASE_ENVELOPE_STARTING_PRESSURE_PA, "PHASE_ENVELOPE_STARTING_PRESSURE_PA", 100.0, "Starting pressure [Pa] for phase envelope construction") \
+    X(R_U_CODATA, "R_U_CODATA", 8.3144598, "The value for the ideal gas constant in J/mol/K according to CODATA 2014.  This value is used to harmonize all the ideal gas constants. This is especially important in the critical region.") \
+    X(VTPR_UNIFAC_PATH, "VTPR_UNIFAC_PATH", "", "The path to the directory containing the UNIFAC JSON files.  Should be slash terminated") \
+    X(SPINODAL_MINIMUM_DELTA, "SPINODAL_MINIMUM_DELTA", 0.5, "The minimal delta to be used in tracing out the spinodal; make sure that the EOS has a spinodal at this value of delta=rho/rho_r") \
+    X(OVERWRITE_FLUIDS, "OVERWRITE_FLUIDS", false, "If true, and a fluid is added to the fluids library that is already there, rather than not adding the fluid (and probably throwing an exception), overwrite it") \
+    X(OVERWRITE_DEPARTURE_FUNCTION, "OVERWRITE_DEPARTURE_FUNCTION", false, "If true, and a departure function to be added is already there, rather than not adding the departure function (and probably throwing an exception), overwrite it") \
+    X(OVERWRITE_BINARY_INTERACTION, "OVERWRITE_BINARY_INTERACTION", false, "If true, and a pair of binary interaction pairs to be added is already there, rather than not adding the binary interaction pair (and probably throwing an exception), overwrite it") \
+    X(USE_GUESSES_IN_PROPSSI, "USE_GUESSES_IN_PROPSSI", false, "If true, calls to the vectorized versions of PropsSI use the previous state as guess value while looping over the input vectors, only makes sense when working with a single fluid and with points that are not too far from each other.") \
+    X(ASSUME_CRITICAL_POINT_STABLE, "ASSUME_CRIT_POINT_STABLE", false, "If true, evaluation of the stability of critical point will be skipped and point will be assumed to be stable") \
+    X(VTPR_ALWAYS_RELOAD_LIBRARY, "VTPR_ALWAYS_RELOAD_LIBRARY", false, "If true, the library will always be reloaded, no matter what is currently loaded") \
+    X(FLOAT_PUNCTUATION, "FLOAT_PUNCTUATION", ".", "The first character of this string will be used as the separator between the number fraction.")
+
 
  // Use preprocessor to create the Enum
  enum configuration_keys{
@@ -54,11 +70,14 @@ namespace CoolProp
 /// Convert the configuration key to a string in a 1-1 representation.
 std::string config_key_to_string(configuration_keys keys);
 
+/// Convert a string description to a configuration key
+configuration_keys config_string_to_key(const std::string &s);
+
 /// Return a string description of the configuration key
 std::string config_key_description(configuration_keys keys);
 
 /// Return a string description of the configuration key (with the key passed as a string)
-std::string config_key_description(std::string key);
+std::string config_key_description(const std::string &key);
     
 /// A class that contains one entry in configuration
 /// Can be cast to yield the output value
