@@ -8,7 +8,11 @@ REFPROP Interface
 
 The thermophysical property library REFPROP developed by researchers at the National Institute of Standards and Technology in Boulder, Colorado is the gold standard in thermophysical properties.  It is mature and stable, and is currently the library most used in industry and for scientific applications.
 
-CoolProp allows for full interaction with the REFPROP library, while using the nicely abstracted C++ interface for all target languages that CoolProp supports. 
+CoolProp allows for full interaction with the REFPROP library, while using the nicely abstracted C++ interface for all target languages that CoolProp supports.
+
+.. seealso::
+
+    For throughput-bound workloads against the REFPROP backend, the :doc:`SVDSBTL </coolprop/SVDSBTL>` SVD-compressed tabular backend can sample REFPROP once at table-build time and serve subsequent ``(p, h)`` / ``(p, T)`` queries at sub-microsecond per-probe in the single-phase envelope — ``SVDSBTL&REFPROP::<Fluid>``.  Matches REFPROP truth on the sat curves within REFPROP's own numerical-noise floor; falls through to REFPROP's PQ flash for two-phase endpoints.
 
 The core difference between using CoolProp's internal routines and REFPROP's routines is that you have to change the backend from ``HEOS`` to ``REFPROP``.  In the high-level interface this is demonstrated as:
 
@@ -71,7 +75,35 @@ Path Issues
 
 .. warning::
 
-    In order for REFPROP to be able to be loaded by CoolProp, the default logic for each operating system is used to load the REFPROP shared library.  This means that on windows, the ``PATH`` environmental variable is searched for the ``REFPROP.dll`` (32-bit applications) or ``REFPRP64.dll`` (64-bit applications). On linux/OSX, the default shared library loading protocol is used.  If your REFPROP is installed in a non-standard location (not on the path), make sure that when you run code that uses REFPROP, that you add (temporarily) the location of the REFPROP shared library to your path.
+    Due to the difficulties of working with paths in REFPROP, a new (as of version 6.8.0) environment variable is now defined called ``COOLPROP_REFPROP_ROOT``. If you define this environment variable, it will take precedence over any internal configuration variables and will be used to locate and initialize REFPROP. To use this environment variable, the folder structure should look like::
+
+        REFPROP
+        ├── FLUIDS
+        │   ├── 13BUTADIENE.FLD
+        │   ├── 1BUTENE.FLD
+        │   ├── 1BUTYNE.FLD
+        │   ├── ...
+        ├── MIXTURES
+        │   ├── AIR.MIX
+        │   ├── AMARILLO.MIX
+        │   ├── ...
+        └── librefprop.dylib
+
+    and the environment variable ``COOLPROP_REFPROP_ROOT`` should be set to the absolute path of the folder ``REFPROP`` in the above folder structure. After REFPROP is loaded, the ``SETPATHdll`` function will be called with the value of the environment variable ``COOLPROP_REFPROP_ROOT``.
+
+    The shared library that should be in the folder (in the place of ``librefprop.dylib``) depends on the operating system:
+    
+    * mac (darwin, osx): ``librefprop.dylib``
+    * linux: ``librefprop.so``
+    * windows (32-bit): ``REFPROP.DLL``
+    * windows (64-bit, amd64): ``REFPRP64.DLL``
+    * windows (64-bit, arm64): ``REFPRP64.DLL``
+
+    Note that all filenames are case-sensitive on all platforms other than windows (and depending on your setup, sometimes also mac). You can build REFPROP shared library youself with the build system from https://github.com/usnistgov/REFPROP-cmake.
+
+.. warning::
+
+    In order for REFPROP to be able to be loaded by CoolProp, the default logic for each operating system is used to load the REFPROP shared library.  This means that on windows, the ``PATH`` environmental variable is searched for the ``REFPROP.dll`` (32-bit applications) or ``REFPRP64.dll`` (64-bit applications). On linux/OSX, the default shared library loading protocol is used.  If your REFPROP is installed in a non-standard location (not on the path), make sure that when you run code that uses REFPROP, that you add (temporarily) the location of the REFPROP shared library to your path or set one of the following configuration variables.
 
 REFPROP needs to be able to find the fluid and mixture files at runtime, at a location specified on your computer.  CoolProp allows you to avoid the pains of decoding REFPROP's internal logic for finding these files by explicitly specifying the path that it should tell REFPROP to look for the fluid files.  
 
@@ -84,25 +116,78 @@ The configuration key for setting the REFPROP path (see :ref:`configuration`) is
 .. ipython::
 
     In [0]: import json, CoolProp.CoolProp as CP
-
-    In [1]: jj = json.loads(CP.get_config_as_json_string())
     
-    In [2]: jj['ALTERNATIVE_REFPROP_PATH'] = 'c:\\Program Files\\REFPROP'
-    
-    In [3]: jj = CP.set_config_as_json_string(json.dumps(jj))
+    In [1]: CP.set_config_string(CP.ALTERNATIVE_REFPROP_PATH, 'c:\\Program Files\\REFPROP\\')
 
-If you do this, internally CoolProp will call the ``SETPATH`` function in REFPROP to tell REFPROP that it should find the ``fluids`` and ``mixtures`` directories within this directory.  If you don't do this, CoolProp will use whatever default logic REFPROP uses to find the fluid files.
+If you do this, internally CoolProp will construct the full path to the ``fluids`` and ``mixtures`` directories and use them to call REFPROP's `SETUP` function when loading fluids.  If you don't do this, CoolProp will use whatever default logic REFPROP uses to find the fluid files.
+
+If you wish to use a certain shared library, for example to try different REFPROP versions, you explicitly define it via ``ALTERNATIVE_REFPROP_LIBRARY_PATH``. This configuration variable makes CoolProp ignore the ``ALTERNATIVE_REFPROP_PATH`` when loading the shared library and you might have to provide the full path to your shared library here by doing something like this in python:
+
+.. ipython::
+
+    In [0]: import json, CoolProp.CoolProp as CP
+    
+    In [1]: CP.set_config_string(CP.ALTERNATIVE_REFPROP_LIBRARY_PATH, 'c:\\Program Files\\REFPROP\\REFPRP64.v9.1.dll')
+
+.. warning::
+    
+    If you use a combination of ``ALTERNATIVE_REFPROP_LIBRARY_PATH`` and ``ALTERNATIVE_REFPROP_PATH``, the shared library gets loaded directly from ``ALTERNATIVE_REFPROP_LIBRARY_PATH`` while the fluid files still will be accessed via ``ALTERNATIVE_REFPROP_PATH``. You can thus have one single folder with fluid files that are used with different shared libraries. Make sure that the fluid files are compatible with all the shared library versions you are using. 
 
 If you are playing around with mixture parameters, you might want to set a different path to the HMX.BNC file which contains the interaction parameters for the mixture.  You can do that by changing the configuration variable  (see :ref:`configuration`) ``ALTERNATIVE_REFPROP_HMX_BNC_PATH``
 
 .. ipython::
 
     In [0]: import json, CoolProp.CoolProp as CP
-
-    In [1]: jj = json.loads(CP.get_config_as_json_string())
     
-    In [2]: jj['ALTERNATIVE_REFPROP_HMX_BNC_PATH'] = 'c:\\Program Files\\REFPROP\\fluids\\HMX.BNC'
-    
-    In [3]: jj = CP.set_config_as_json_string(json.dumps(jj))
+    In [1]: CP.set_config_string(CP.ALTERNATIVE_REFPROP_HMX_BNC_PATH, 'c:\\Program Files\\REFPROP\\fluids\\HMX.BNC')
 
 If you have set both the ``ALTERNATIVE_REFPROP_PATH`` and ``ALTERNATIVE_REFPROP_HMX_BNC_PATH`` variables, ``ALTERNATIVE_REFPROP_PATH_HMX_BNC_PATH`` "wins", and this path will be used when loading mixture interaction parameters
+
+And now we set them back to their default values
+
+.. ipython::
+
+    In [0]: import json, CoolProp.CoolProp as CP
+    
+    In [1]: CP.set_config_string(CP.ALTERNATIVE_REFPROP_HMX_BNC_PATH, '')
+    
+    In [1]: CP.set_config_string(CP.ALTERNATIVE_REFPROP_LIBRARY_PATH, '')
+
+    In [1]: CP.set_config_string(CP.ALTERNATIVE_REFPROP_PATH, '')
+
+Other Platforms
+---------------
+
+On linux and OSX, you can build your own copy of REFPROP shared library using the instructions here: https://github.com/usnistgov/REFPROP-cmake
+
+On linux, here are instructions for adding your shared library to the ``LD_LIBRARY_PATH`` variable: https://stackoverflow.com/a/13428971/1360263
+
+Other Features
+--------------
+
+If you want to determine the version of REFPROP that you are actually using, you can do:
+
+.. ipython::
+
+    In [0]: import CoolProp.CoolProp as CP
+    
+    In [1]: CP.get_global_param_string("REFPROP_version")
+
+
+If you want to use the GERG-2008 model, you can do this at the beginning of your code:
+
+.. ipython::
+
+    In [0]: import CoolProp.CoolProp as CP
+    
+    In [1]: CP.set_config_bool(CP.REFPROP_USE_GERG, True)
+
+Subsequently, all calculations will be done with the simplified EOS from the GERG-2008 model
+
+And now we set them back to their default values
+
+.. ipython::
+
+    In [0]: import json, CoolProp.CoolProp as CP
+    
+    In [1]: CP.set_config_bool(CP.REFPROP_USE_GERG, False)

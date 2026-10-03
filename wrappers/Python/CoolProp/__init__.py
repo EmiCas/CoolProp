@@ -3,8 +3,8 @@ from __future__ import absolute_import
 # If there is a constants.[pyd|so|dylib] in the main directory, it will be imported instead of the constants.py file.
 # It should be removed as it is from the older version of CoolProp
 from . import constants
-if constants.__file__.rsplit('.', 1)[1] not in ['pyc','pyo','py']:
-    
+if constants.__file__.rsplit('.', 1)[1] not in ['pyc', 'pyo', 'py']:
+
     import os
     try:
         os.remove(constants.__file__)
@@ -31,6 +31,8 @@ def get(s):
     ``CoolProp.get_global_param_string``
     """
     return CoolProp.get_global_param_string(s)
+
+
 def test():
     """
     Run the tests in the test folder
@@ -38,11 +40,12 @@ def test():
     from .tests import runner
     runner.run()
 
+
 def get_include_directory():
     """
     Get the include directory for CoolProp header files that are needed if you want
     to compile anything else that uses the CoolProp Cython extension type
-    
+
     Returns
     -------
     include_directory: The path to the include folder for CoolProp
@@ -50,31 +53,30 @@ def get_include_directory():
     import os
     head, file = os.path.split(__file__)
     return os.path.join(head, 'include')
-    
-def copy_BibTeX_library(file = None, folder = None):
+
+
+def copy_BibTeX_library(file=None, folder=None):
     """
     Copy the CoolProp BibTeX library file to the file given by ``file``, or the folder given by ``folder``
-    
-    If no inputs are provided, the file will be copied to the current working 
+
+    If no inputs are provided, the file will be copied to the current working
     directory
-    
+
     Parameters
     ----------
     file : string
         Provide if you want to put the file into a given file
     folder : string
         Provide if you want to put the CoolPropBibTeXLibrary.bib file into the given folder
-    
+
     """
     import os, shutil
-    path_to_bib = os.path.join(os.path.split(__file__)[0],'CoolPropBibTeXLibrary.bib')
+    path_to_bib = os.path.join(os.path.split(__file__)[0], 'CoolPropBibTeXLibrary.bib')
     if file is None and folder is None:
-        shutil.copy2(path_to_bib,os.path.abspath(os.curdir))
+        shutil.copy2(path_to_bib, os.path.abspath(os.curdir))
     elif file and folder is None:
-        shutil.copy2(path_to_bib,file)
+        shutil.copy2(path_to_bib, file)
     elif folder and file is None:
-        shutil.copy2(path_to_bib,os.path.join(folder,file))
+        shutil.copy2(path_to_bib, folder)
     else:
         raise ValueError('can only provide one of file or folder')
-        
-    

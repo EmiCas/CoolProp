@@ -1,4 +1,3 @@
-#cython: embedsignature = True, c_string_type = unicode, c_string_encoding = ascii
 from __future__ import division
 #
 # This file provides wrapper functions of all the CoolProp functions
@@ -12,7 +11,18 @@ cimport cython
 import math
 import warnings
 
-from typedefs cimport CoolPropDbl
+#
+# Ensure that all deprecation warnings triggered in __main__ are displayed by default
+# Note: Python deprecation warning behavior varies by version
+#       3.7+       - Show all deprecation warnings
+#       3.2 to 3.6 - Hide all deprecation warnings
+#       before 3.2 - Show all deprecation warnings
+#       The filter below will ensure that all dep. warnings show
+#       in all versions of Python
+#
+warnings.filterwarnings('default', category=DeprecationWarning, module='__main__')
+
+from .typedefs cimport CoolPropDbl
 
 try:
     import numpy as np
@@ -29,31 +39,41 @@ cdef extern from "Python.h":
 cdef extern from "Python.h":
     int __LINE__
 
-cdef extern from "CoolPropTools.h":
+cdef extern from "CoolProp/detail/tools.h":
     double get_HUGE()
-    
-cdef extern from "CoolPropTools.h" namespace "CoolProp":
+
+cdef extern from "CoolProp/detail/tools.h" namespace "CoolProp":
     bint _ValidNumber "ValidNumber"(double)
-    
-cdef extern from "Configuration.h" namespace "CoolProp":    
+
+cdef extern from "CoolProp/Configuration.h" namespace "CoolProp":
     string _get_config_as_json_string "CoolProp::get_config_as_json_string"() except +
     void _set_config_as_json_string "CoolProp::set_config_as_json_string"(string) except +
     string _config_key_description "CoolProp::config_key_description"(string) except +
 
-cdef extern from "DataStructures.h" namespace "CoolProp":    
+    void _set_config_string "CoolProp::set_config_string"(constants_header.configuration_keys,string) except +
+    void _set_config_double "CoolProp::set_config_double"(constants_header.configuration_keys,double) except +
+    void _set_config_bool "CoolProp::set_config_bool"(constants_header.configuration_keys,bint) except +
+    void _set_config_int "CoolProp::set_config_int"(constants_header.configuration_keys,int) except +
+
+    string _get_config_string "CoolProp::get_config_string"(constants_header.configuration_keys) except +
+    double _get_config_double "CoolProp::get_config_double"(constants_header.configuration_keys) except +
+    bint _get_config_bool "CoolProp::get_config_bool"(constants_header.configuration_keys) except +
+    int _get_config_int "CoolProp::get_config_int"(constants_header.configuration_keys) except +
+
+cdef extern from "CoolProp/DataStructures.h" namespace "CoolProp":
     string _get_parameter_information "CoolProp::get_parameter_information"(int, string) except +
     int _get_parameter_index "CoolProp::get_parameter_index"(string) except +
     int _get_phase_index "CoolProp::get_phase_index"(string) except +
     bint _is_trivial_parameter "CoolProp::is_trivial_parameter"(int) except +
     constants_header.input_pairs _generate_update_pair "CoolProp::generate_update_pair"(constants_header.parameters key1, double value1, constants_header.parameters key2, double value2, double &out1, double &out2) except +
-    
-cdef extern from "CoolPropLib.h":
+
+cdef extern from "CoolProp/CoolPropLib.h":
     double _Props "Props"(const char* Output, const char Name1, double Prop1, const char Name2, double Prop2, const char* Ref)
-    
-cdef extern from "CoolProp.h" namespace "CoolProp":
+
+cdef extern from "CoolProp/CoolProp.h" namespace "CoolProp":
     double _Props1SI "CoolProp::Props1SI"(string Ref, string Output)
-    double _PropsSI "CoolProp::PropsSI"(string Output, string Name1, double Prop1, string Name2, double Prop2, string FluidName) 
-    string _PhaseSI "CoolProp::PhaseSI"(string Name1, double Prop1, string Name2, double Prop2, string FluidName) 
+    double _PropsSI "CoolProp::PropsSI"(string Output, string Name1, double Prop1, string Name2, double Prop2, string FluidName)
+    string _PhaseSI "CoolProp::PhaseSI"(string Name1, double Prop1, string Name2, double Prop2, string FluidName)
     vector[vector[double]] _PropsSImulti "CoolProp::PropsSImulti"(vector[string] Outputs, string Name1, vector[double] Prop1, string Name2, vector[double] Prop2, string backend, vector[string] FluidName, vector[double] fractions)
     string _get_global_param_string "CoolProp::get_global_param_string"(string ParamName) except +
     int _get_debug_level "CoolProp::get_debug_level"() except +
@@ -64,8 +84,9 @@ cdef extern from "CoolProp.h" namespace "CoolProp":
     void _set_reference_stateS "CoolProp::set_reference_stateS"(string, string) except +
     void _set_reference_stateD "CoolProp::set_reference_stateD"(string, double, double, double, double) except +
     double _saturation_ancillary "CoolProp::saturation_ancillary"(string, string, int, string, double) except +
- 
-cdef extern from "HumidAirProp.h" namespace "HumidAir":
+    bint _add_fluids_as_JSON "CoolProp::add_fluids_as_JSON"(const string backend, const string JSON) except +
+
+cdef extern from "CoolProp/HumidAirProp.h" namespace "HumidAir":
     double _HAPropsSI "HumidAir::HAPropsSI"(string OutputName, string Input1Name, double Input1, string Input2Name, double Input2, string Input3Name, double Input3)
     double _HAProps "HumidAir::HAProps"(string OutputName, string Input1Name, double Input1, string Input2Name, double Input2, string Input3Name, double Input3)
     double _HAProps_Aux "HumidAir::HAProps_Aux"(const char* Name,double T, double p, double W, char *units)
@@ -75,14 +96,118 @@ cdef extern from "Backends/Helmholtz/MixtureParameters.h" namespace "CoolProp":
     string _get_mixture_binary_pair_data "CoolProp::get_mixture_binary_pair_data"(const string CAS1, const string CAS2, const string key) except +
     void _set_mixture_binary_pair_data "CoolProp::set_mixture_binary_pair_data"(const string CAS1, const string CAS2, const string key, const double val) except +
     void _apply_simple_mixing_rule "CoolProp::apply_simple_mixing_rule"(const string &CAS1, const string &CAS2, const string &rule) except +
+    void _set_departure_functions "CoolProp::set_departure_functions"(const string &functions) except +
+    void _set_interaction_parameters "CoolProp::set_interaction_parameters"(const string &data) except +
+    void _set_predefined_mixtures "CoolProp::set_predefined_mixtures"(const string &data) except +
 
-from constants import *
-from constants_header cimport *
-cimport constants_header
+cdef extern from "Backends/PCSAFT/PCSAFTLibrary.h" namespace "CoolProp":
+    string _get_mixture_binary_pair_pcsaft "CoolProp::get_mixture_binary_pair_pcsaft"(const string CAS1, const string CAS2, const string key) except +
+    void _set_mixture_binary_pair_pcsaft "CoolProp::set_mixture_binary_pair_pcsaft"(const string CAS1, const string CAS2, const string key, const double val) except +
+
+from .constants import *
+from .constants_header cimport *
+from . cimport constants_header
+
+from . cimport superancillary as supanc
+from cpython cimport array
+
+from libcpp.utility cimport move 
+
+ctypedef vector[double] ArrayType
+ctypedef supanc.ChebyshevExpansion[ArrayType] ChebExp
+    
+cdef class ChebyshevExpansion:
+    cdef ChebExp* m_exp
+
+    def __cinit__(self, double xmin, double xmax, vector[double] coef):
+        self.m_exp = new ChebExp(xmin, xmax, coef)
+
+    def __dealloc__(self):
+        del self.m_exp
+
+    def xmin(self):
+        return self.m_exp.xmin()
+    
+    def xmax(self):
+        return self.m_exp.xmax()
+
+    def coeff(self):
+        np_array = np.asarray(self.m_exp.coeff() )
+        cdef double[:] view = np_array
+        return view 
+
+    def eval_many(self, double[::1] x, double[::1] y):
+        assert x.size == y.size
+        self.m_exp.eval_manyC(&x[0], &y[0], x.shape[0])    
+
+    def solve_for_x(self, double y, double a, double b, unsigned int bits, size_t max_iter, double boundstytol):
+        return self.m_exp.solve_for_x(y, a, b, bits, max_iter, boundstytol)
+
+    def solve_for_x_many(self, double[::1]  y, double a, double b, unsigned int bits, size_t max_iter, double boundstytol, double[::1] x, size_t [::1] counts):
+        cdef size_t N = y.shape[0]
+        self.m_exp.solve_for_x_manyC[double, size_t](&y[0], N, a, b, bits, max_iter, boundstytol, &x[0], &counts[0])
+
+ctypedef supanc.ChebyshevApproximation1D[ArrayType] ChebApprox1D
+from cython.operator cimport dereference as deref
+
+cdef class ChebyshevApproximation1D:
+    cdef supanc.ChebyshevApproximation1D[vector[double]]* thisptr
+
+    def __cinit__(self, expansions):
+        cdef vector[supanc.ChebyshevExpansion[vector[double]]] expansions_copy
+        cdef ChebyshevExpansion expansion
+        for expansion in expansions:
+            expansions_copy.push_back(deref(expansion.m_exp))
+        self.thisptr = new ChebApprox1D(move(expansions_copy))
+
+    def xmin(self):
+        return self.thisptr.xmin()
+    
+    def xmax(self):
+        return self.thisptr.xmax()
+
+    def is_monotonic(self):
+        return self.thisptr.is_monotonic()
+
+    def eval_many(self, double[::1] x, double[::1] y):
+        assert x.size == y.size
+        self.thisptr.eval_manyC(&x[0], &y[0], x.shape[0])
+
+    def get_x_for_y(self, double y, unsigned int bits, size_t max_iter, double boundstytol):
+        return self.thisptr.get_x_for_y(y, bits, max_iter, boundstytol)
+
+    def count_x_for_y_many(self, double[::1] y, unsigned int bits, size_t max_iter, double boundstytol, size_t[::1] counts):
+        assert y.shape[0] == counts.shape[0]
+        cdef size_t N = y.shape[0]
+        self.thisptr.count_x_for_y_manyC[double, size_t](&y[0], N, bits, max_iter, boundstytol, &counts[0])
+
+    def monotonic_intervals(self):
+        return self.thisptr.get_monotonic_intervals()
+
+    def __dealloc__(self):
+        del self.thisptr
+
+ctypedef supanc.SuperAncillary[ArrayType] SuperAncillary_t
+
+cdef class SuperAncillary:
+    cdef SuperAncillary_t* thisptr
+
+    def __cinit__(self, str json_as_string):
+        self.thisptr = new SuperAncillary_t(json_as_string)
+
+    def eval_sat(self, double T, str prop, short Q):
+        cdef char prop_ = prop[0]
+        return self.thisptr.eval_sat(T, prop_, Q)
+
+    def eval_sat_many(self, double[::1] T, str prop, short Q, double[::1] y):
+        assert T.shape[0] == y.shape[0]
+        cdef char prop_ = prop[0]
+        cdef size_t N = y.shape[0]
+        return self.thisptr.eval_sat_manyC(&T[0], N, prop_, Q, &y[0])
 
 cdef bint iterable(object a):
     """
-    If numpy is supported, this function retuns true if the argument is a
+    If numpy is supported, this function returns true if the argument is a
     numpy array or another iterable, otherwise just checks if list or tuple
     """
     if _numpy_supported:
@@ -92,14 +217,24 @@ cdef bint iterable(object a):
 
 cdef ndarray_or_iterable(object input):
     if _numpy_supported:
-        return np.squeeze(np.array(input))
+        result = np.squeeze(np.array(input))
+        # np.squeeze of a (1,1) input collapses to a 0-d array, which
+        # has no len() and confuses callers (#2417). Restore at least
+        # one dimension so list-shaped inputs always yield array-shaped
+        # outputs.
+        if result.ndim == 0:
+            result = result.reshape(-1)
+        return result
     else:
         return input
 
 include "HumidAirProp.pyx"
 include "AbstractState.pyx"
 
-def set_reference_state(string FluidName, *args):
+
+
+
+def set_reference_state(FluidName, *args):
     """
     Accepts one of two signatures:
 
@@ -118,17 +253,21 @@ def set_reference_state(string FluidName, *args):
 
     Type #2 (A Python wrapper of :cpapi:`CoolProp::set_reference_stateD`):
 
-    set_reference_state(FluidName,T0,rho0,h0,s0)
+    set_reference_state(FluidName,T0,rhomolar,hmolar0,smolar0)
+
+    .. note::
+
+        Only supported for internal backend currently
 
     ``FluidName`` The name of the fluid
 
     ``T0`` The temperature at the reference point [K]
 
-    ``rho0`` The density at the reference point [kg/m^3]
+    ``rhomolar`` The density at the reference point [mol/m^3]
 
-    ``h0`` The enthalpy at the reference point [J/kg]
+    ``hmolar0`` The enthalpy at the reference point [J/mol]
 
-    ``s0`` The entropy at the reference point [J/kg]
+    ``smolar0`` The entropy at the reference point [J/mol/K]
     """
 
     cdef bytes _param
@@ -139,7 +278,7 @@ def set_reference_state(string FluidName, *args):
     elif len(args) == 4:
         _set_reference_stateD(FluidName, args[0], args[1], args[2], args[3])
     else:
-        raise ValueError('Invalid number of inputs')
+        raise ValueError(b'Invalid number of inputs')
 
 # cpdef long get_Fluid_index(string_like Fluid):
 #     """
@@ -188,7 +327,7 @@ cpdef string get_config_as_json_string():
     Values can be set by passing a modified json library (converted to string) to set_config_as_json_string
     """
     return _get_config_as_json_string()
-    
+
 cpdef string config_key_description(string key):
     """
     Obtain the string description for a configuration key.  Python wrapper of C++ function :cpapi:`CoolProp::config_key_description`
@@ -202,6 +341,38 @@ cpdef set_config_as_json_string(string s):
     Current state can be obtained by calling get_config_as_json_string
     """
     _set_config_as_json_string(s)
+
+cpdef set_config_double(constants_header.configuration_keys key, double value):
+    """ Set configuration key that is a double-precision float;  wrapper of wrapper of C++ function :cpapi:`CoolProp::set_config_double` """
+    _set_config_double(key, value)
+
+cpdef set_config_string(constants_header.configuration_keys key, string value):
+    """ Set a configuration key that is a string;  wrapper of wrapper of C++ function :cpapi:`CoolProp::set_config_string` """
+    _set_config_string(key, value)
+
+cpdef set_config_bool(constants_header.configuration_keys key, bint value):
+    """ Set a configuration key that is a boolean;  wrapper of wrapper of C++ function :cpapi:`CoolProp::set_config_bool` """
+    _set_config_bool(key, value)
+
+cpdef set_config_int(constants_header.configuration_keys key, int value):
+    """ Set a configuration key that is an integer;  wrapper of wrapper of C++ function :cpapi:`CoolProp::set_config_int` """
+    _set_config_int(key, value)
+
+cpdef double get_config_double(constants_header.configuration_keys key):
+    """ Get a configuration key that is a double-precision float;  wrapper of wrapper of C++ function :cpapi:`CoolProp::get_config_double` """
+    return _get_config_double(key)
+
+cpdef string get_config_string(constants_header.configuration_keys key):
+    """ Get a configuration key that is a string;  wrapper of wrapper of C++ function :cpapi:`CoolProp::get_config_string` """
+    return _get_config_string(key)
+
+cpdef bint get_config_bool(constants_header.configuration_keys key):
+    """ Get a configuration key that is a boolean;  wrapper of wrapper of C++ function :cpapi:`CoolProp::get_config_bool` """
+    return _get_config_bool(key)
+
+cpdef int get_config_int(constants_header.configuration_keys key):
+    """ Get a configuration key that is an integer;  wrapper of wrapper of C++ function :cpapi:`CoolProp::get_config_int` """
+    return _get_config_int(key)
 
 cpdef int get_parameter_index(string key):
     return _get_parameter_index(key)
@@ -217,20 +388,38 @@ cpdef string get_mixture_binary_pair_data(CAS1, CAS2, key) except *:
     Obtain mixture interaction parameter.  Python wrapper of C++ function :cpapi:`CoolProp::get_mixture_binary_pair_data`
     """
     return _get_mixture_binary_pair_data(CAS1, CAS2, key)
-    
+
 cpdef set_mixture_binary_pair_data(CAS1, CAS2, key, val):
     """
     Set mixture interaction parameter.  Python wrapper of C++ function :cpapi:`CoolProp::set_mixture_binary_pair_data`
     """
     _set_mixture_binary_pair_data(CAS1, CAS2, key, val)
 
-cpdef get_global_param_string(string param):
+cpdef string get_mixture_binary_pair_pcsaft(CAS1, CAS2, key) except *:
+    """
+    Obtain mixture PC-SAFT interaction parameter.  Python wrapper of C++ function :cpapi:`CoolProp::get_mixture_binary_pair_pcsaft`
+    """
+    _get_mixture_binary_pair_pcsaft(CAS1, CAS2, key)
+
+cpdef set_mixture_binary_pair_pcsaft(CAS1, CAS2, key, val):
+    """
+    Set mixture PC-SAFT interaction parameter.  Python wrapper of C++ function :cpapi:`CoolProp::set_mixture_binary_pair_pcsaft`
+    """
+    _set_mixture_binary_pair_pcsaft(CAS1, CAS2, key, val)
+
+cpdef add_fluids_as_JSON(backend, JSONstring):
+    """
+    Add fluids in a JSON-formatted string format. Python wrapper of C++ function :cpapi:`CoolProp::add_fluids_as_JSON`
+    """
+    _add_fluids_as_JSON(backend, JSONstring)
+
+cpdef get_global_param_string(param):
     return _get_global_param_string(param)
-    
+
 cpdef is_trivial_parameter(int key):
     return _is_trivial_parameter(key)
 
-cpdef get_fluid_param_string(string fluid, string param):
+cpdef get_fluid_param_string(fluid, param):
     return _get_fluid_param_string(fluid, param)
 
 cpdef apply_simple_mixing_rule(CAS1, CAS2, rule):
@@ -238,7 +427,25 @@ cpdef apply_simple_mixing_rule(CAS1, CAS2, rule):
     Apply simple mixing rule.  Currently linear or Lorentz-Berthelot.  Python wrapper of C++ function :cpapi:`CoolProp::apply_simple_mixing_rule`
     """
     _apply_simple_mixing_rule(CAS1, CAS2, rule)
-    
+
+cpdef set_departure_functions(functions):
+    """
+    Specify the departure terms as JSON. Python wrapper of C++ function :cpapi:`CoolProp::set_departure_functions`
+    """
+    _set_departure_functions(functions)
+
+cpdef set_interaction_parameters(data):
+    """
+    Specify the binary interaction terms as JSON. Python wrapper of C++ function :cpapi:`CoolProp::set_interaction_parameters`
+    """
+    _set_interaction_parameters(data)   
+
+cpdef set_predefined_mixtures(data):
+    """
+    Specify predefined mixtures as JSON. Python wrapper of C++ function :cpapi:`CoolProp::set_predefined_mixtures`
+    """
+    _set_predefined_mixtures(data)
+
 cpdef double saturation_ancillary(string name, string output, int Q, string input, double value):
     """
     Return a value from the saturation ancillary equations; python wrapper of :cpapi:`CoolProp::saturation_ancillary`
@@ -246,14 +453,14 @@ cpdef double saturation_ancillary(string name, string output, int Q, string inpu
     return _saturation_ancillary(name, output, Q, input, value)
 
 cpdef __Props_err1(fcn, in1,in2):
-    errstr = _get_global_param_string('errstring')
+    errstr = _get_global_param_string(b'errstring')
     if not len(errstr) == 0:
         raise ValueError("{err:s} :: inputs were :\"{in1:s}\",\"{in2:s}\"".format(err= errstr,in1=in1,in2=in2))
     else:
         raise ValueError("{fcn:s} failed ungracefully with inputs:\"{in1:s}\",\"{in2:s}\"; please file a ticket at https://github.com/CoolProp/CoolProp/issues".format(fcn=fcn, in1=in1,in2=in2))
 
 cpdef __Props_err2(fcn, in1, in2, in3, in4, in5, in6):
-    errstr = _get_global_param_string('errstring')
+    errstr = _get_global_param_string(b'errstring')
     if not len(errstr) == 0:
         raise ValueError("{err:s}".format(err=errstr))
     else:
@@ -264,8 +471,10 @@ cpdef Props(in1, in2, in3 = None, in4 = None, in5 = None, in6 = None):
     This function is deprecated, use PropsSI instead
     """
     import warnings
+    # Issue deprecation warning....
     dep_warning = "Props() function is deprecated; Use the PropsSI() function"
-    warnings.warn_explicit(dep_warning, category=UserWarning, filename='CoolProp.pyx', lineno = -1)
+    warnings.warn(dep_warning, DeprecationWarning)
+    # ...but process Props() function anyway...
     if len(in2) != 1:
         raise ValueError('Length of input name #1 must be 1 character')
     if len(in4) != 1:
@@ -308,13 +517,23 @@ cpdef PropsSI(in1, in2, in3 = None, in4 = None, in5 = None, in6 = None, in7 = No
         is_iterable1 = iterable(in1)
         is_iterable3 = iterable(in3)
         is_iterable5 = iterable(in5)
-        
-        if _numpy_supported and is_iterable3 and isinstance(in3, np.ndarray) and (np.prod(in3.shape) != max(in3.shape)): 
+
+        if _numpy_supported and is_iterable3 and isinstance(in3, np.ndarray) and (np.prod(in3.shape) != max(in3.shape)):
             raise ValueError("Input 3 is not one-dimensional")
-        if _numpy_supported and is_iterable5 and isinstance(in5, np.ndarray) and (np.prod(in5.shape) != max(in5.shape)): 
+        if _numpy_supported and is_iterable5 and isinstance(in5, np.ndarray) and (np.prod(in5.shape) != max(in5.shape)):
             raise ValueError("Input 5 is not one-dimensional")
-        
+
         if is_iterable1 or is_iterable3 or is_iterable5:
+            # Empty state inputs -> empty result (no work to do).
+            # Without this short-circuit, _PropsSImulti returns an empty
+            # IO vector, which the post-call check below would raise on
+            # as if it were an error (#2417).
+            if (is_iterable3 and len(in3) == 0) or (is_iterable5 and len(in5) == 0):
+                if _numpy_supported:
+                    return np.array([])
+                else:
+                    return []
+
             # Prepare the output datatype
             if not is_iterable1:
                 vin1.push_back(in1)
@@ -359,7 +578,7 @@ cpdef PropsSI(in1, in2, in3 = None, in4 = None, in5 = None, in6 = None, in7 = No
 
             # Check that we got some output
             if outmat.empty():
-                raise ValueError(_get_global_param_string('errstring'))
+                raise ValueError(_get_global_param_string(b'errstring'))
 
             return ndarray_or_iterable(outmat)
         else:
@@ -391,16 +610,21 @@ cpdef list FluidsList():
        In [1]: FluidsList()
 
     """
-    return _get_global_param_string("FluidsList").split(',')
+    return _get_global_param_string(b"FluidsList").split(',')
 
-cpdef get_aliases(string Fluid):
+from re import split as re_split
+
+cpdef get_aliases(Fluid):
     """
-    Return a comma separated string of aliases for the given fluid
+    Return a list of aliases for the given fluid.
+    Uses regex to properly handle cases like '1,2-dichloroethane' where the comma
+    is part of the chemical name rather than a separator.
     """
     cdef bytes _Fluid = Fluid.encode('ascii')
-    return [F for F in _get_fluid_param_string(_Fluid, 'aliases').split(',')]
+    # Use negative lookbehind to avoid splitting on commas that follow a digit
+    return _get_fluid_param_string(_Fluid, b'aliases_bar').split('|')
 
-cpdef string get_REFPROPname(string Fluid):
+cpdef string get_REFPROPname(Fluid):
     """
     Return the REFPROP compatible name for the fluid
 
@@ -416,9 +640,9 @@ cpdef string get_REFPROPname(string Fluid):
 
        In [2]: PropsSI('D', 'T', 300, 'P', 300, Fluid)
     """
-    return _get_fluid_param_string(Fluid,'REFPROP_name')
+    return _get_fluid_param_string(Fluid,b'REFPROP_name')
 
-cpdef string get_BibTeXKey(string Fluid, string key) except *:
+cpdef string get_BibTeXKey(Fluid, key) except *:
     """
     Return the BibTeX key for the given fluid.
 
@@ -440,13 +664,13 @@ cpdef string get_BibTeXKey(string Fluid, string key) except *:
     key, string
          empty string if Fluid not in CoolProp, "Bad key" if key is invalid
     """
-    return _get_fluid_param_string(Fluid, "BibTeX-"+key)
+    return _get_fluid_param_string(Fluid, b"BibTeX-"+key.encode('ascii'))
 
 cpdef string get_errstr():
     """
     Return the current error string
     """
-    return _get_global_param_string("errstring")
+    return _get_global_param_string(b"errstring")
 
 cpdef set_debug_level(int level):
     """
@@ -493,7 +717,7 @@ cpdef int get_debug_level():
 #
 
 
-cpdef extract_backend(string in_str):
+cpdef extract_backend(in_str):
     """
     A Python wrapper of C++ function :cpapi:`CoolProp::extract_backend` .
     """
@@ -503,12 +727,12 @@ cpdef extract_backend(string in_str):
     return bck, fld
 
 
-cpdef extract_fractions(string flds):
+cpdef extract_fractions(flds):
     """
     A Python wrapper of C++ function :cpapi:`CoolProp::extract_fractions` .
     """
     cdef vector[double] frcs
-    cdef string del_flds    
+    cdef string del_flds
     # Extract the fractions
     #frcs.clear()
     frcs.push_back(1.0)
@@ -522,7 +746,7 @@ cdef toSI(constants_header.parameters key, double val):
     """
     Convert a value in kSI system to SI system (supports a limited subset of variables)
     """
-    if key in [iT, iDmass, iQ]:
+    if key in [iT, iDmass, iQ, iQmass]:
         return val
     elif key in [iP, iHmass, iSmass, iUmass]:
         return val*1000
@@ -532,6 +756,7 @@ cdef toSI(constants_header.parameters key, double val):
 #A dictionary mapping parameter index to string for use with non-CoolProp fluids
 cdef dict paras = {iDmass : 'D',
                    iQ : 'Q',
+                   iQmass : 'Qmass',
                    imolar_mass : 'M',
                    iT : 'T',
                    iHmass : 'H',
@@ -545,6 +770,36 @@ cdef dict paras = {iDmass : 'D',
                    iSmass : 'S',
                    iUmass : 'U'
 }
+
+# From https://cython.readthedocs.io/en/latest/src/tutorial/strings.html
+cdef str _to_str(s):
+    if type(s) is str:
+        # Fast path for most common case(s).
+        return <str>s
+
+    elif isinstance(s, bytes):
+        # Only accept byte strings as text input in Python 2.x, not in Py3.
+        return (<bytes>s).decode('utf8')
+
+    elif isinstance(s, str):
+        # We know from the fast path above that 's' can only be a subtype here.
+        # An evil cast to <str> might still work in some(!) cases,
+        # depending on what the further processing does.  To be safe,
+        # we can always create a copy instead.
+        return str(s)
+
+    else:
+        raise TypeError("Could not convert to str.")
+
+# From https://cython.readthedocs.io/en/latest/src/tutorial/strings.html
+cdef bytes _to_chars(s):
+    
+    if isinstance(s, str):
+        # encode to the specific encoding used inside of the module
+        return (<str>s).encode('utf8')
+    else:
+        raise TypeError("Could not convert to bytes.")
+    return s
 
 cdef dict paras_inverse = {v:k for k,v in paras.iteritems()}
 
@@ -579,7 +834,7 @@ cdef class State:
     sets the internal variables in the most computationally efficient way possible
     """
 
-    def __init__(self, object Fluid, dict StateDict, object phase = None, backend = None):
+    def __init__(self, object _Fluid, dict StateDict, object phase = None, backend = None):
         """
         Parameters
         ----------
@@ -591,32 +846,33 @@ cdef class State:
         backend : string
             The CoolProp backend that should be used, one of "HEOS" (default), "REFPROP", "INCOMP", "BRINE", etc.
         """
-        cdef string _Fluid = Fluid
+        cdef str Fluid = _to_str(_Fluid)
 
-        if _Fluid == <string>'none':
+        if Fluid == 'none':
             return
         else:
             if '::' in Fluid:
-                backend, Fluid = Fluid.split(u'::',1)
+                backend, _Fluid = Fluid.split('::')
             elif backend is None:
-                backend = u'?'
+                backend = '?'
 
-            self.set_Fluid(Fluid, backend)
-        self.Fluid = _Fluid
+            self.set_Fluid(_Fluid, backend)
+        self.Fluid = _to_chars(Fluid)
+
+        if phase is None:
+            self.phase = b'??'
+        else:
+            self.phase = _to_chars(phase)
+
+        # Set the phase flag
+        if self.phase.lower() == b'gas':
+            self.pAS.specify_phase(constants_header.iphase_gas)
+        elif self.phase.lower() == b'liquid':
+            self.pAS.specify_phase(constants_header.iphase_liquid)
 
         # Parse the inputs provided
         if StateDict is not None:
             self.update(StateDict)
-
-        self.phase = phase
-        if phase is None:
-            self.phase = u'??'.encode('ascii')
-
-        # Set the phase flag
-        if self.phase.lower() == 'gas':
-            self.pAS.specify_phase(constants_header.iphase_gas)
-        elif self.phase.lower() == 'liquid':
-            self.pAS.specify_phase(constants_header.iphase_liquid)
 
 #     def __reduce__(self):
 #         d={}
@@ -626,11 +882,11 @@ cdef class State:
 #         d['phase'] = self.phase
 #         return rebuildState,(d,)
 
-    cpdef set_Fluid(self, string Fluid, string backend):
+    cpdef set_Fluid(self, Fluid, backend):
 
-        cdef object _Fluid = Fluid
-        cdef object _backend = backend
-        cdef bint set_fractions = False
+        cdef str _Fluid = _to_str(Fluid)
+        cdef str _backend = _to_str(backend)
+        cdef bool set_fractions = False
         new_fluid = []
         fracs = []
         if '[' in _Fluid and ']' in _Fluid:
@@ -641,8 +897,8 @@ cdef class State:
                 fracs.append(float(frac.strip(']')))
             _Fluid = '&'.join(new_fluid)
             set_fractions = True
-        
-        self.pAS = AbstractState(_backend, _Fluid)
+
+        self.pAS = AbstractState(_to_chars(_backend), _to_chars(_Fluid))
         if set_fractions:
             self.pAS.set_mole_fractions(fracs)
 
@@ -699,7 +955,7 @@ cdef class State:
         val2 = toSI(key2, items[1][1])
 
         input_pair = _generate_update_pair(key1, val1, key2, val2, o1, o2)
-        
+
         self.pAS.update(input_pair, o1, o2);
 
         self.T_ = self.pAS.T()
@@ -727,7 +983,7 @@ cdef class State:
 
     cpdef double get_Q(self) except *:
         """ Get the quality [-] """
-        return self.Props(iQ)
+        return self.pAS.Q()
     property Q:
         """ The quality [-] """
         def __get__(self):
@@ -735,7 +991,7 @@ cdef class State:
 
     cpdef double get_MM(self) except *:
         """ Get the mole mass [kg/kmol] or [g/mol] """
-        return self.Props(imolar_mass)*1000
+        return self.pAS.molar_mass()*1000
     property MM:
         """ The molar mass [kg/kmol] or [g/mol] """
         def __get__(self):
@@ -743,7 +999,7 @@ cdef class State:
 
     cpdef double get_rho(self) except *:
         """ Get the density [kg/m^3] """
-        return self.Props(iDmass)
+        return self.pAS.rhomass()
     property rho:
         """ The density [kg/m^3] """
         def __get__(self):
@@ -751,7 +1007,7 @@ cdef class State:
 
     cpdef double get_p(self) except *:
         """ Get the pressure [kPa] """
-        return self.Props(iP)/1000
+        return self.pAS.p()/1000
     property p:
         """ The pressure [kPa] """
         def __get__(self):
@@ -759,7 +1015,7 @@ cdef class State:
 
     cpdef double get_T(self) except *:
         """ Get the temperature [K] """
-        return self.Props(iT)
+        return self.pAS.T()
     property T:
         """ The temperature [K] """
         def __get__(self):
@@ -767,7 +1023,7 @@ cdef class State:
 
     cpdef double get_h(self) except *:
         """ Get the specific enthalpy [kJ/kg] """
-        return self.Props(iHmass)/1000
+        return self.pAS.hmass()/1000
     property h:
         """ The specific enthalpy [kJ/kg] """
         def __get__(self):
@@ -775,7 +1031,7 @@ cdef class State:
 
     cpdef double get_u(self) except *:
         """ Get the specific internal energy [kJ/kg] """
-        return self.Props(iUmass)/1000
+        return self.pAS.umass()/1000
     property u:
         """ The internal energy [kJ/kg] """
         def __get__(self):
@@ -783,7 +1039,7 @@ cdef class State:
 
     cpdef double get_s(self) except *:
         """ Get the specific enthalpy [kJ/kg/K] """
-        return self.Props(iSmass)/1000
+        return self.pAS.smass()/1000
     property s:
         """ The specific enthalpy [kJ/kg/K] """
         def __get__(self):
@@ -799,7 +1055,7 @@ cdef class State:
 
     cpdef double get_cp(self) except *:
         """ Get the specific heat at constant pressure  [kJ/kg/K] """
-        return self.Props(iCpmass)/1000
+        return self.pAS.cpmass()/1000
     property cp:
         """ The specific heat at constant pressure  [kJ/kg/K] """
         def __get__(self):
@@ -807,7 +1063,7 @@ cdef class State:
 
     cpdef double get_cv(self) except *:
         """ Get the specific heat at constant volume  [kJ/kg/K] """
-        return self.Props(iCvmass)/1000
+        return self.pAS.cvmass()/1000
     property cv:
         """ The specific heat at constant volume  [kJ/kg/K] """
         def __get__(self):
@@ -819,7 +1075,7 @@ cdef class State:
 
     cpdef double get_visc(self) except *:
         """ Get the viscosity, in [Pa-s]"""
-        return self.Props(iviscosity)
+        return self.pAS.viscosity()
     property visc:
         """ The viscosity, in [Pa-s]"""
         def __get__(self):
@@ -827,7 +1083,7 @@ cdef class State:
 
     cpdef double get_cond(self) except *:
         """ Get the thermal conductivity, in [kW/m/K]"""
-        return self.Props(iconductivity)/1000
+        return self.pAS.conductivity()/1000
     property k:
         """ The thermal conductivity, in [kW/m/K]"""
         def __get__(self):
@@ -921,31 +1177,31 @@ cdef class State:
         cdef char * k
         cdef long ikey
         cdef bytes Fluid = self.Fluid
-        cdef long IT = 'T'
-        cdef long ID = 'D'
+        cdef long IT = b'T'
+        cdef long ID = b'D'
         import CoolProp as CP
 
-        print 'Call to the Python call layer (CoolProp.CoolProp.Props)'
-        print "'M' involves basically no computational effort and is a good measure of the function call overhead"
+        print('Call to the Python call layer (CoolProp.CoolProp.Props)')
+        print("'M' involves basically no computational effort and is a good measure of the function call overhead")
         keys = ['H','P','S','U','C','O','V','L','M','d(P)/d(T)|Dmolar']
         for key in keys:
             t1=clock()
             for i in range(N):
-                CP.PropsSI(key,'T',self.T_,'D',self.rho_,Fluid)
+                CP.PropsSI(key,b'T',self.T_,b'D',self.rho_,Fluid)
             t2=clock()
-            print 'Elapsed time for {0:d} calls for "{1:s}" at {2:g} us/call'.format(N,key,(t2-t1)/N*1e6)
+            print('Elapsed time for {0:d} calls for "{1:s}" at {2:g} us/call'.format(N,key,(t2-t1)/N*1e6))
 
-        print 'Direct c++ call to CoolProp without the Python call layer (_Props function)'
-        print "'M' involves basically no computational effort and is a good measure of the function call overhead"
+        print('Direct c++ call to CoolProp without the Python call layer (_Props function)')
+        print("'M' involves basically no computational effort and is a good measure of the function call overhead")
         keys = ['H','P','S','U','C','O','V','L','M','C0','d(P)/d(T)|Dmolar']
         for key in keys:
             t1=clock()
             for i in range(N):
-                _PropsSI(key,'T',self.T_,'D',self.rho_,Fluid)
+                _PropsSI(key,b'T',self.T_,b'D',self.rho_,Fluid)
             t2=clock()
-            print 'Elapsed time for {0:d} calls for "{1:s}" at {2:g} us/call'.format(N,key,(t2-t1)/N*1e6)
+            print('Elapsed time for {0:d} calls for "{1:s}" at {2:g} us/call'.format(N,key,(t2-t1)/N*1e6))
 
-        print 'Call to the c++ layer using integers'
+        print('Call to the c++ layer using integers')
         keys = [iHmass, iP,iSmass,iUmass]
         for key in keys:
             t1=clock()
@@ -953,14 +1209,14 @@ cdef class State:
                 self.pAS.update(DmassT_INPUTS,self.rho_,self.T_)
                 self.pAS.keyed_output(key)
             t2=clock()
-            print 'Elapsed time for {0:d} calls for "{1:s}" at {2:g} us/call'.format(N,paras[key],(t2-t1)/N*1e6)
+            print('Elapsed time for {0:d} calls for "{1:s}" at {2:g} us/call'.format(N,paras[key],(t2-t1)/N*1e6))
 
-        print 'Call to the AbstractState for molar mass (fast)'
+        print('Call to the AbstractState for molar mass (fast)')
         t1=clock()
         for i in range(N):
             self.pAS.keyed_output(imolar_mass)
         t2=clock()
-        print 'Elapsed time for {0:d} calls at {1:g} us/call'.format(N, (t2-t1)/N*1e6)
+        print('Elapsed time for {0:d} calls at {1:g} us/call'.format(N, (t2-t1)/N*1e6))
 
 #
 #         print 'Call using TTSE with T,rho'
@@ -1001,41 +1257,43 @@ cdef class State:
         """
         Return a string representation of the state
         """
-        units={'T': 'K',
-               'p': 'kPa',
-               'rho': 'kg/m^3',
-               'Q':'kg/kg',
-               'h':'kJ/kg',
-               'u':'kJ/kg',
-               's':'kJ/kg/K',
-               'visc':'Pa-s',
-               'k':'kW/m/K',
-               'cp':'kJ/kg/K',
-               'cp0':'kJ/kg/K',
-               'cv':'kJ/kg/K',
-               'dpdT':'kPa/K',
-               'Tsat':'K',
-               'superheat':'K',
-               'subcooling':'K',
-               'MM':'kg/kmol'
+        units = {
+        'T': 'K',
+        'p': 'kPa',
+        'rho': 'kg/m^3',
+        'Q': 'kg/kg',
+        'h': 'kJ/kg',
+        'u': 'kJ/kg',
+        's': 'kJ/kg/K',
+        'visc': 'Pa-s',
+        'k': 'kW/m/K',
+        'cp': 'kJ/kg/K',
+        'cp0': 'kJ/kg/K',
+        'cv': 'kJ/kg/K',
+        'dpdT': 'kPa/K',
+        'Tsat': 'K',
+        'superheat': 'K',
+        'subcooling': 'K',
+        'MM': 'kg/kmol'
         }
-        s='phase = '+self.phase+'\n'
+        s = 'phase = '+self.phase.decode('ascii')+'\n'
+        s += 'Fluid = '+self.Fluid.decode('ascii')+'\n'
         for k in ['T','p','rho','Q','h','u','s','visc','k','cp','cp0','cv','dpdT','Prandtl','superheat','subcooling','MM']:
             if k in units:
-                s+=k+' = '+str(getattr(self,k))+' '+units[k]+'\n'
+                s += k + ' = '+str(getattr(self,k))+' '+units[k]+'\n'
             else:
-                s+=k+' = '+str(getattr(self,k))+' NO UNITS'+'\n'
+                s += k + ' = '+str(getattr(self,k))+' NO UNITS'+'\n'
         return s.rstrip()
 
     cpdef State copy(self):
         """
         Make a copy of this State class
         """
-        cdef State S = State(self.Fluid,dict(T=self.T_,D=self.rho_))
-        S.phase = self.phase
+        cdef State S = State(self.Fluid, None, phase=self.phase.decode('ascii')) # None is for the state variables, which we leave empty in order to set the phase
+        # Now we update the state
+        S.update(dict(T=self.T_,D=self.rho_))
         return S
 
 def rebuildState(d):
     S=State(d['Fluid'],{'T':d['T'],'D':d['rho']},phase=d['phase'])
     return S
-

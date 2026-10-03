@@ -13,9 +13,41 @@ Static libraries can be used to compile all of CoolProp into one compilation uni
 
 When writing your own C++ code, it is advised to compile CoolProp to a static library and then link CoolProp and your own code.
 
+CMake Integration
+=================
+
+If you are using CMake, the process is quite trivial to integrate the CoolProp static library into your build system.  For instance, if you have the folder layout::
+
+    main
+     |- CMakeLists.txt (For your project, see below)
+     |- mycode.cpp
+     |- externals
+        |- CoolProp
+            |- src
+            |- include
+            |- ...
+            |- CMakeLists.txt
+            |-
+
+Then CMakeLists.txt might have the contents::
+
+    cmake_minimum_required(VERSION 3.15)
+    project(main LANGUAGES CXX)
+    set(COOLPROP_STATIC_LIBRARY ON CACHE BOOL "" FORCE)
+    add_subdirectory("${CMAKE_SOURCE_DIR}/externals/CoolProp" CoolProp)
+    add_executable(main "${CMAKE_SOURCE_DIR}/mycode.cpp")
+    target_link_libraries(main PRIVATE CoolProp::CoolProp)
+
+An already-installed CoolProp package can instead be used without embedding
+its source tree::
+
+    find_package(CoolProp 8 CONFIG REQUIRED COMPONENTS Static)
+    add_executable(main mycode.cpp)
+    target_link_libraries(main PRIVATE CoolProp::Static)
+
 Pre-compiled Binaries
 =====================
-Pre-compiled release binaries can be downloaded from :sfdownloads:`static_library`.  Development binaries coming from the buildbot server can be found at :sfnightly:`static_library`.  These static libraries are ONLY useful if the compiler used to build the static library agrees with the static library that will be used to build your other code.  This cannot be guaranteed, and no effort is made to that effect.  Build your own static libraries following the instructions below.
+Pre-compiled release binaries can be downloaded from :sfdownloads:`static_library`.  Nightly development binaries can be found at :sfnightly:`static_library`.  These static libraries are ONLY useful if the compiler used to build the static library agrees with the static library that will be used to build your other code.  This cannot be guaranteed, and no effort is made to that effect.  Build your own static libraries following the instructions below.
 
 .. warning::
 
@@ -34,7 +66,7 @@ Compile
 You can build the static library using::
 
     # Check out the sources for CoolProp
-    git clone https://github.com/CoolProp/CoolProp --recursive
+    git clone https://github.com/CoolProp/CoolProp
     # Move into the folder you just created
     cd CoolProp
     # Make a build folder
@@ -43,27 +75,33 @@ You can build the static library using::
     cmake .. -DCOOLPROP_STATIC_LIBRARY=ON
     # Make the static library
     cmake --build .
-    
+
 .. note::
 
-    If you use mingw port of gcc on windows, you should add the generator name to the first call of cmake so that it reads something like::
-    
-        cmake .. -G "MinGW Makefiles" -DCOOLPROP_STATIC_LIBRARY=ON
-        
+    If you use the modern mingw (MSYS2/UCRT) port of gcc on windows, you should run from within the UCRT64 environment and add the generator name to the first call of cmake so that it reads something like::
+
+        cmake .. -G "Ninja" -DCOOLPROP_STATIC_LIBRARY=ON -DCOOLPROP_RELEASE=ON
+
 .. note::
 
     If you use Microsoft Visual Studio, you should tell cmake what exact version of visual studio you would like it to use, by doing something like::
-    
-        cmake .. -G "Visual Studio 12 2013 Win64" -DCOOLPROP_STATIC_LIBRARY=ON
-        
-    which is a 64-bit build for Microsoft Visual Studio 2013 (even express version) for instance.  You can get the full list of supported generators on your machine by doing `cmake --help`.
+
+        cmake .. -G "Visual Studio 17 2022" -A x64 -DCOOLPROP_STATIC_LIBRARY=ON
+
+    which is a 64-bit build for Microsoft Visual Studio 2022 (even express version) for instance.  You can get the full list of supported generators on your machine by doing `cmake --help`.
+
+.. note::
+
+    If you use gcc with libstdc++ (like on ubuntu) and want to build the debug library, you should add the proper cxx flags to link to the correct debug libstdc++ librariries::
+
+        cmake .. -DCOOLPROP_DEBUG=ON -DCMAKE_CXX_FLAGS_DEBUG='-g -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC'
 
 Usage
 -----
 
-For all platforms we start with a simple example file here called main.cpp::
+For all platforms we start with a simple example file here called main.cpp; the "Hello world" of CoolProp ::
 
-    #include "CoolProp.h"
+    #include "CoolProp/CoolProp.h"
     #include <iostream>
 
     int main()
@@ -82,17 +120,17 @@ On linux and OSX, you can use the compiled static library in your application by
 This will result in an executable which can be run by the user.
 
 .. warning::
-    
-    In gcc and mingw ports of gcc, make sure that the `-lCoolProp` is the last argument in the line, otherwise you will certainly get linking errors.  See also: http://www.mingw.org/wiki/specify_the_libraries_for_the_linker_to_use .
-    
+
+    In gcc and mingw ports of gcc, make sure that the `-lCoolProp` is the last argument in the line, otherwise you will certainly get linking errors.  See also: https://www.mingw.org/wiki/specify_the_libraries_for_the_linker_to_use .
+
 Windows
 ^^^^^^^
 
-On windows the two main compiler families are Visual Studio and MINGW+GCC.
+On windows the two main compiler families are Visual Studio and MSYS2(UCRT64)+gcc.
 
-**Mingw+gcc**: If you use mingw, follow the instructions like for linux and OSX, and leave off the ``-ldl`` argument to the compilation.
+**MSYS2(UCRT64)+gcc**: If you use MSYS2(UCRT64) (*formerly MINGW*), follow the instructions like for linux and OSX, and leave off the ``-ldl`` argument to the compilation.
 
-**Visual Studio**: 
+**Visual Studio**:
 
 a) Generate the static library following the command line instructions above, ensuring that you have selected the proper visual studio version as well as ``Win64`` in your generator if you would like a 64-bit static library
 b) Create a new empty project in visual studio, change to 64-bit (x64) build type if you would like

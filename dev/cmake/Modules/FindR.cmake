@@ -22,8 +22,13 @@ find_program(R_EXEC
              NO_DEFAULT_PATH
              NO_CMAKE_PATH
              )
+IF( "${R_EXEC}" STREQUAL "R_EXEC-NOTFOUND")
+    MESSAGE(FATAL_ERROR "The executable R could not be found in the folder ${R_BIN}")
+ENDIF()
+
+
 MESSAGE(STATUS "R_EXEC= ${R_EXEC}")
-# Parse the output of the R path commmand, removing whitespace
+# Parse the output of the R path command, removing whitespace
 FUNCTION(chomp arg1 arg2)
     string(REPLACE "\n" ";" arg1list ${arg1})
     list(GET arg1list 1 arg1line)
@@ -57,15 +62,28 @@ execute_process(
 file(REMOVE ${CMAKE_CURRENT_BINARY_DIR}/get_bin.R)
 chomp(${R_BIN_TEXT} R_BIN_DIR)
 MESSAGE(STATUS "R_BIN_TEXT = ${R_BIN_DIR} w/ RESULT=${R_BIN_RESULT}")
-        
-find_library (
+
+if (WIN32)
+# Bug in cmake 3.17, need to search for file rather than library
+find_file(
           R_LIBRARY
-          R
-          PATHS ${R_BIN_DIR} ${R_HOME_TEXT}/lib
+          NAMES R.dll
+          PATHS ${R_BIN_DIR}
           NO_DEFAULT_PATH
-          NO_CMAKE_PATH
+)
+else()
+set(R_PATH_LOC "${R_HOME_TEXT}/lib")
+MESSAGE(STATUS "R_PATH_LOC = ${R_PATH_LOC}")
+find_library(
+          R_LIBRARY
+          NAMES R
+          PATHS ${R_PATH_LOC}
+          NO_DEFAULT_PATH
+          #NO_CMAKE_PATH
           )
+endif()
 MESSAGE(STATUS "R_LIBRARY = ${R_LIBRARY}")
+
 find_package_handle_standard_args(R DEFAULT_MSG
                                   R_LIBRARY R_INCLUDE_DIRS)
 

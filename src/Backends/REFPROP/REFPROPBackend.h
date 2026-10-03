@@ -9,21 +9,24 @@
 #define REFPROPBACKEND_H_
 
 #include "REFPROPMixtureBackend.h"
+#include "CoolProp/DataStructures.h"
 
 namespace CoolProp {
 
 /**
-This backend is used for pure and pseudo-pure fluids powered by 
+This backend is used for pure and pseudo-pure fluids powered by
 REFPROP.  It hides all the implementation of mixture properties
 and exposes just the pure fluid interface.
 */
-class REFPROPBackend : public REFPROPMixtureBackend  {
-public:
-    
+class REFPROPBackend : public REFPROPMixtureBackend
+{
+   public:
     REFPROPBackend();
-    REFPROPBackend(const std::string &fluid_name);
-    std::string backend_name(void){return "REFPROPBackend";}
-    
+    REFPROPBackend(const std::string& fluid_name);
+    std::string backend_name() override {
+        return get_backend_string(REFPROP_BACKEND_PURE);
+    }
+
     virtual ~REFPROPBackend();
 };
 

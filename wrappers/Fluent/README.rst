@@ -3,19 +3,53 @@ CoolProp wrapper for FLUENT
 
 Contributors
 ------------
-Primary CoolProp Developer: Ian Bell, University of Liege, Belgium (ian.h.bell@gmail.com)
-FLUENT experts: Joris Degroote and Iva Papes, University of Gent, Belgium
-First release: October 17, 2013
+- Primary CoolProp Developer: Ian Bell, University of Liege, Belgium (ian.h.bell@gmail.com)
+- FLUENT experts: Joris Degroote and Iva Papes, University of Gent, Belgium
+- Other Contributors: 
+   - Frederic Sonnino, AREVA company (frederic.sonnino1@areva.com)
+   - Omar Zaki, University of Illinois at Urbana-Champaign (Omarz2@illinois.edu)
+
+Windows
+---------------
+Using the shared library method can result in some limitation of functionality and some issues with linking DLL to the compiler. Compiling static library and using it is guranteed to work more robustly, but requires more work and compiling the static library yourself using the same compiler used for the UDF later.
+
+1. Download CoolProp Shared Library (https://sourceforge.net/projects/coolprop/files/CoolProp/)
+   
+   a. Open the Link above
+   b. Select the CoolProp version you wish to use
+   c. Open *shared_library* Folder
+   d. Download the file *CoolProp/CoolPropLib.h*
+   e. Open *Windows* Folder
+   f. Select the version you would like to use in your code; most likely, you will need the *64bit* version
+   g. Download *CoolProp.dll* and *CoolProp.lib* files
+
+2. Place the three files (*CoolProp.dll*, *CoolProp.lib*, and *CoolProp/CoolPropLib.h*) in your Flunet working folder.
+3. Launch Fluent using Fluent Startup window. Make Sure to select the Working Folder is the same as step 2
+4. Select *User-Defined* tab -> *Functions* -> *Compiled*
+5. Using the window, include your UDF source file as .cpp; You can find an example UDF file in this folder named *Example_windows_UDF.cpp*
+
+   a. Make sure the UDF cpp file has "*#include "CoolProp/CoolPropLib.h*"
+   b. Make sure the UDF cpp file has "*#pragma comment(lib, "XX//XX//CoolProp.lib")*" which includes the CoolProp lib file into the compilation process.
+
+	i. Make sure that the path of *CoolProp.lib* is the correct **absolute** path
+	ii. use "//" for path instead of "\"
+6. Using the window, include *CoolProp/CoolPropLib.h* file you downloaded eariler in the *Header Files* section
+7. Build the UDF DLL, then load it
+8. Test functionality through *User-Defined* tab -> *Excute on Demand* -> select *test::libudf* -> Click Execute
+
+Linux
+------------
 
 Requirements
-------------
-A linux version of FLUENT
-g++
+~~~~~~~~~~~~
+* A linux version of FLUENT
+* g++
+* python 2.7
+* cmake >2.8
 
 To Build
---------
-
-Let us call the directory the directory where the Fluent wrapper is (coolprop/wrappers/Fluent) as CUSTOM_DIRECTORY.
+~~~~~~~~~~~~
+Let us call the main directory where the Fluent case and the fluent wrapper is (coolprop/wrappers/Fluent) as CUSTOM_DIRECTORY.
 
 1. Make sure you are in the CUSTOM_DIRECTORY
 
@@ -23,13 +57,13 @@ Let us call the directory the directory where the Fluent wrapper is (coolprop/wr
 
    a. If they are not, move your case/mesh and UDF files to CUSTOM_DIRECTORY. Do NOT move compile.sh.
    
-   b. By default, an UDF example (UDF.c and properties.c) has been included in CUSTOM_DIRECTORY.
+   b. By default, several UDF examples (CoolProp_Properties_of_Water.c OR CoolProp_Properties_of_Brine.c) has been included in CUSTOM_DIRECTORY, one and only must be chosen
    
 3. Run the script compile.sh (sh compile.sh SOLVER FLUENT_BIN_PATH), this should generate the libudf folder.
 
    a. SOLVER is the type of solver you want to run (2d, 2ddp, 3d, 3ddp)
    
-   b. FLUENT_BIN_FOLDER is the path of your Fluent's installation bin folder (i.e. /home/ansys_inc/v145/fluent/bin)
+   b. FLUENT_BIN_FOLDER is the path of your Fluent's installation bin folder (i.e. /home/ansys_inc/v150/fluent/bin)
    
    c. An example of how to run the shell file: sh compile.sh 2ddp /home/ansys_inc/v145/fluent/bin
    
@@ -37,40 +71,38 @@ Let us call the directory the directory where the Fluent wrapper is (coolprop/wr
    
    e. Several warnings may show up, those should not be a problem.
    
-4. Run Fluent.
+   f. another script is present compile_only_udf.sh, it runs the same way (sh compile_only_udf.sh SOLVER FLUENT_BIN_PATH) but it skips the coolprop compilation (in order to save compilation time) and only makes the compilation of the fluent udf into shared objects and link it with shared library CoolProp and output libudf.so. It could be useful while debugging other udfs for instance
+   
+4. Add in your .bashrc the following line and replace CUSTOM_DIRECTORY by the complete path coolprop/wrappers/Fluent/CoolProp_Build 
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:CoolProp_Build_directory 
+   
+5. Run Fluent.
 
    a. Make sure it runs the same solver as specified in the SOLVER variable (2d, 2ddp, 3d, 3ddp)
    
-5. Open your case/mesh.
+6. Open your case/mesh.
 
-6. Compile the UDFs.
+7. By default the udf examples ( for instance CoolProp_Properties_of_water.c ) embed EXECUTE_ON_DEMAND  
 
-   a. Using the Fluent interface, go to Define > User-Defined > Functions > Compiled
+   a. Using the Fluent interface to check if it is working: Define > User-defined > Execute on Demand
+      
+   b. Select "call_coolprop_water::libudf" and hit execute
    
-   b. Select the .c files in CUSTOM_DIRECTORY as UDFs and .h files, if any, as headers
-   
-   c. Make sure "libudf" is written in the Library field
-   
-   d. Hit Load
-   
-7. The default UDF.c provided by the Coolprop wrapper is an EXECUTE_ON_DEMAND file.
+8. The default CoolProp_Properties_of_Water.c provided integrates thermal conductivity, density, viscosity and specific heat from CoolProp library with the Fluent solver.
 
-   a. To check if it is working: Define > User-defined > Execute on Demand
+   a. After loading , go to the Materials tab and change the model of each property listed above to user-defined and select the corresponding function (libudf::water_viscosity, libudf::water_density, libudf::water_specificHeat or libudf::water_thermalConductivity)
    
-   b. Select "call_coolprop::libudf" and hit execute
+   b. The fluid is, by default, water. To change the working fluid, you have to change the FLUID[] variable in the CoolProp_Properties_of_Water.c UDF file BEFORE running compile.sh. A full list of fluids supported by Coolprop may be found here: https://www.coolprop.org/FluidInformation.html
+   Another example is given in CoolProp_Properties_of_Brine.c, the FLUID[] is a mixture between chloride sodium with a 20% concentration
    
-8. The default properties.c provided integrates thermal conductivity, density, viscosity and specific heat from Coolprop library with the Fluent solver. Do not load UDF.c and properties.c simultaneously.
-
-   a. After loading properties.c, go to the Materials tab and change the model of each property listed above to user-defined and select the corresponding function (libudf::viscosity, libudf::density, libudf::specificHeat or libudf::thermalConductivity)
-   
-   b. The fluid is, by default, carbon dioxide. To change the working fluid, you have to change the FLUID variable in the properties.c UDF file BEFORE running compile.sh. A full list of fluids supported by Coolprop may be found here: http://coolprop.sourceforge.net/Fluids/FluidInformation.html
-   
-   c. If the operating pressure in your Fluent case is different than atmospheric (101325 Pa), you will also have to change gauge variable in properties.c
+   c. If the operating pressure in your Fluent case is different than atmospheric (101325 Pa), you will also have to change gauge pressure variable in CoolProp_Properties_of_Water.c
    
    c. Specific heat is currently only a function of temperature in the Fluent wrapper.
 
    
-Note: If no argument is specified when running the shell file (step 3), then the script will assume Fluent can be run from command line (fluent) and the solver is 2d double precision (2ddp)
+Note: If no argument is specified when running the shell file (step 3), then the script will assume Fluent can be run from command line (fluent) and the solver is 3d double precision (2ddp) ---> actually it do not work
+
+
   
 Warning
 -------

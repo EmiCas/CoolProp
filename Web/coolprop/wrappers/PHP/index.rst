@@ -7,11 +7,11 @@ PHP Wrapper
 Pre-Compiled Binaries
 =====================
 
-* Download the shared library for your architecture from :sfdownloads:`PHP`, or from the development buildbot server at :sfnightly:`PHP`.  Also download the CoolProp.php platform-independent file.  Or build it yourself (see below)
+* Download the shared library for your architecture from :sfdownloads:`PHP`, or from the nightly builds at :sfnightly:`PHP`.  Also download the CoolProp.php platform-independent file.  Or build it yourself (see below)
 
-* Copy the libCoolProp.so file into the extension-dir for php::
+* Copy the libCoolPropPHP.so file into the extension-dir for php::
 
-    sudo cp libCoolProp.so `php-config --extension-dir`
+    sudo cp libCoolPropPHP.so `php-config --extension-dir`
 
   This copies the shared library into a location that PHP can load.  sudo is needed to make the copy. Alternatively, in the following step you will need to use the full path to the extension, which is just a bit more annoying.
 
@@ -19,9 +19,9 @@ Pre-Compiled Binaries
 
 * Modify the PHP.ini file that PHP will load to add::
 
-    extension = "CoolProp.so"
+    extension = "libCoolPropPHP.so"
 
-  after ``[PHP]``. If you didn't copy libCoolProp.so into the folder given by ```php-config --extension-dir``` you will need to use the absolute path
+  after ``[PHP]``. If you didn't copy libCoolPropPHP.so into the folder given by ``php-config --extension-dir`` you will need to use the absolute path
 
 * You can determine the php.ini file that you should be modifying by creating a file on the server with the contents
 
@@ -55,6 +55,36 @@ Pre-Compiled Binaries
      $T = PropsSI("T","P",$p,"Q",$Q,"Water");
      print "NBP of water is $T\n";
      ?>
+     
+ * And here is another example demonstrating how to call the low-level interface:
+ 
+   .. code-block:: php
+   
+     <?php
+        include_once "CoolProp.php";
+
+        // set the REFPROP path
+        set_config_string(ALTERNATIVE_REFPROP_PATH, "/opt/refprop/");
+
+        // extend the abstract class AbstractState
+        class ConcreteState extends AbstractState {
+            static function factory($backend, $fluid_names) {
+                $r = AbstractState_factory($backend, $fluid_names);
+                if (!is_resource($r)) return $r;
+                return new ConcreteState($r);
+            }
+        }
+
+        // instantiate the class
+        $water = ConcreteState::factory("REFPROP", "Water");
+
+        $p = 101325;
+        $Q = 1.0;
+        $water->update(PQ_INPUTS, $p, $Q);
+        $T = $water->T();
+
+        print "NBP of water is $T\n";
+    ?>
 
 User-Compiled Binaries
 ======================
@@ -69,12 +99,18 @@ Additionally, you need SWIG, which can be obtained on Debian-based OS with::
 
     sudo apt-get install swig
 
+On Ubuntu 16.04 LTS, the default PHP is 7.0, which is not compatible with SWIG as of Aug 10, 2016.  So to get PHP 5.6 on ubuntu 16.04, you can do::
+
+    sudo add-apt-repository ppa:ondrej/php
+    sudo apt-get update
+    sudo apt-get install php5.6 php5.6-dev
+
 Linux
 -----
 
-1. Check out coolprop::
+1. Check out CoolProp::
 
-    git clone https://github.com/CoolProp/CoolProp --recursive
+    git clone https://github.com/CoolProp/CoolProp
 
 2. Folder creating::
 
@@ -82,12 +118,19 @@ Linux
 
 3. Build the php module::
 
-    cmake .. -DCOOLPROP_PHP_MODULE=ON
+    cmake .. -DCOOLPROP_PHP_MODULE=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON
 
 4. Build (verbosely so we can see if there are any problems)::
 
-    make VERBOSE=1
+    cmake --build .
 
-  This will generate the file libCoolProp.so and the php module CoolProp.php
+  This will generate the file libCoolPropPHP.so.
+
+  .. note::
+
+     With SWIG 4.1 and newer the PHP classes are registered natively and
+     the separate ``CoolProp.php`` proxy file is no longer generated; the
+     references to ``CoolProp.php`` above apply only to builds made with
+     SWIG older than 4.1.
 
 5. See the above instructions in the Pre-Compiled Binaries section for installation instructions

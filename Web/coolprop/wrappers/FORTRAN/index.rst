@@ -18,10 +18,10 @@ Compilers
 
 On linux, you need gcc and gfortran, which are easy to install using your package manager.
 
-On windows, the most reliable mixed compilation seems to be using the mingw-provided gfortran/gcc combination from `TDM-GCC <http://tdm-gcc.tdragon.net/download>`_ (use the 64-bit installation, and make sure you install gfortran, gcc and g++ at the minimum).  These are the versions used as of January 3, 2016::
+On windows, the most reliable mixed compilation seems to be using the gfortran/gcc combination from `MinGW-w64 <https://sourceforge.net/projects/mingw-w64/files>`_, whose installer allows you to install different versions of GCC, typically up to the last one. Version 5.3.0 is the one used as of February 10, 2016::
 
-    >c:\TDM-GCC-64\bin\gfortran --version
-    GNU Fortran (tdm64-1) 5.1.0
+    >C:\>gfortran --version
+    GNU Fortran (x86_64-posix-seh-rev0, Built by MinGW-W64 project) 5.3.0
     Copyright (C) 2015 Free Software Foundation, Inc.
 
     GNU Fortran comes with NO WARRANTY, to the extent permitted by law.
@@ -29,14 +29,16 @@ On windows, the most reliable mixed compilation seems to be using the mingw-prov
     under the terms of the GNU General Public License.
     For more information about these matters, see the file named COPYING
 
-    >c:\TDM-GCC-64\bin\g++ --version
-    g++ (tdm64-1) 5.1.0
+
+    >C:\>g++ --version
+    g++ (x86_64-posix-seh-rev0, Built by MinGW-W64 project) 5.3.0
     Copyright (C) 2015 Free Software Foundation, Inc.
     This is free software; see the source for copying conditions.  There is NO
     warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-    
+
 .. warning::
-    MinGW has problems with the latest version of CoolProp.  Using TDM-GCC seems to resolve all these issues
+    gfortran in GCC version 5.1 has a bug preventing to open external files (a segmentation error is prompted), which makes this   version almost useless for fortran users.  
+
 
 On OSX, the default compiler that comes with XCode is clang, gcc and g++ at the command prompt are just aliases to clang.  See for instance::
 
@@ -50,7 +52,7 @@ The most reliable mixed compilation on linux seems to be with the true-gcc/g++ t
 
     brew install gcc-4.9
 
-where you can change ``4.9`` to the most up to date version.  Search `braumeister <http://braumeister.org/formula/gcc>`_ for the most recipe for gcc.  Looks like ``gcc`` also works.
+where you can change ``4.9`` to the most up to date version.  Search `braumeister <https://braumeister.org/formula/gcc>`_ for the most recipe for gcc.  Looks like ``gcc`` also works.
 
 .. _FORTRAN95:
 
@@ -148,7 +150,7 @@ On OSX, you must do the linking stage with true gcc so that it finds the right s
 
 .. warning::
 
-    You MUST(!!!) put the -lstdc++ standard libary *after* libCoolProp.a.  Same thing if you compile the fortran to object file, static library must always be at the end.
+    You MUST(!!!) put the -lstdc++ standard library *after* libCoolProp.a.  Same thing if you compile the fortran to object file, static library must always be at the end.
 
 .. _FORTRAN77:
 
@@ -158,7 +160,7 @@ FORTRAN77
 Pre-Compiled Binaries
 ---------------------
 
-* Download the appropriate shared library for your architecture from from :sfdownloads:`shared_library`, or the development versions from the buildbot server at :sfnightly:`shared_library`. Or you can built it yourself given the instructions at :ref:`shared_library`.
+* Download the appropriate shared library for your architecture from from :sfdownloads:`shared_library`, or the nightly development versions at :sfnightly:`shared_library`. Or you can built it yourself given the instructions at :ref:`shared_library`.
 
 Run
 ---

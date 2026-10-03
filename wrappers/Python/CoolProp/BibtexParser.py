@@ -8,17 +8,22 @@ import io
 import codecs, latexcodec
 import os
 
-# Here we are going to simply hack the formatting of the article class such that it preserves the 
+# Here we are going to simply hack the formatting of the article class such that it preserves the
 # desired spacing and capitalization.  Probably this problem could be better solved with new styles,
 # but this seems to work...
 import pybtex.style.formatting as formatting
 from pybtex.style.template import node, join
 # Create our new function
+
+
 @node
 def toplevel(children, data):
-    return join(sep=' ') [children].format_data(data)
+    return join(sep=' ')[children].format_data(data)
+
+
 # And now, we over-write the function with our desired function.  Et voila! It works!
 formatting.toplevel = toplevel
+
 
 class BibTeXerClass(object):
     """
@@ -26,9 +31,8 @@ class BibTeXerClass(object):
     to print a very basic bibliography.
     """
 
-    def __init__(self, fName = u'../../../CoolPropBibTeXLibrary.bib'):
+    def __init__(self, fName=u'../../../CoolPropBibTeXLibrary.bib'):
         self.loadLibrary(fName)
-
 
     def loadLibrary(self, path, keys=[], encoding="latex"):
         """Open a BibTex file and do some initial parsing.
@@ -47,7 +51,7 @@ class BibTeXerClass(object):
             raise ValueError("You have to provide a path to a bibtex file.")
 
         # Create the parser object
-        if len(keys)>0:
+        if len(keys) > 0:
             bib_parser = pybtex.database.input.bibtex.Parser(wanted_entries=keys)
         else:
             bib_parser = pybtex.database.input.bibtex.Parser()
@@ -63,7 +67,7 @@ class BibTeXerClass(object):
                 lines = f.readlines()
                 cleaned = [l.strip() for l in lines if l.strip()]
 
-            path = path+".filtered.bib"
+            path = path + ".filtered.bib"
             with open(path, "w") as f:
                 f.writelines('\n'.join(cleaned))
 
@@ -71,13 +75,13 @@ class BibTeXerClass(object):
         with codecs.open(path, encoding=encoding) as stream:
             self.library = bib_parser.parse_stream(stream)
 
-        #os.remove(path)
+        # os.remove(path)
 
         # Do some post-processing if encoding was latex
-        if encoding=="latex":
+        if encoding == "latex":
             for tag in self.library.entries:
                 entry = self.library.entries[tag]
-                for key, value in entry.fields.iteritems():
+                for key, value in entry.fields.items():
                     entry.fields[key] = self.stripCurls(value)
                     if key == 'Title':
                         entry.fields[key] = u'{' + entry.fields[key] + '}'
@@ -89,18 +93,15 @@ class BibTeXerClass(object):
                         entry.persons[key][i]._last = self.stripCurls(entry.persons[key][i].last())
                         entry.persons[key][i]._lineage = self.stripCurls(entry.persons[key][i].lineage())
 
-
     def stripCurls(self, text):
         """Remove curly brackets from processed Latex code
 
         A function that always returns unicode. It also tries to recurse into
         lists and dicts, but be careful this is not thoroughly tested.
         """
-        table = { ord(u'{'): None, ord(u'}'): None }
+        table = {ord(u'{'): None, ord(u'}'): None}
 
-        if isinstance(text, str): # ordinary string
-            text = unicode(text)
-        elif isinstance(text, unicode): # unicode string
+        if isinstance(text, str):  # ordinary string
             pass
         else:
             try:
@@ -109,7 +110,7 @@ class BibTeXerClass(object):
             except AttributeError:
                 pass
             # Check for list
-            if type(text)==type([]):
+            if isinstance(text, type([])):
                 for i in range(len(text)):
                     text[i] = self.stripCurls(text[i])
             # return the plain object
@@ -117,7 +118,6 @@ class BibTeXerClass(object):
 
         stripped = text.translate(table)
         return stripped
-
 
     def getBibliography(self, keys=None, fmt="plaintext", style="unsrtalpha", enc=None, objects=False):
         """This function creates a formatted bibliography according to the
@@ -134,23 +134,22 @@ class BibTeXerClass(object):
         if self.library is None:
             raise ValueError("No library has been loaded, yet.")
 
-        style_cls   = pybtex.plugin.find_plugin('pybtex.style.formatting', style)
+        style_cls = pybtex.plugin.find_plugin('pybtex.style.formatting', style)
         style = style_cls()
         data = self.library
-        biblio = style.format_bibliography(data,citations=keys)
+        biblio = style.format_bibliography(data, citations=keys)
 
         backend_cls = pybtex.plugin.find_plugin('pybtex.backends', fmt)
         backend = backend_cls(encoding=enc)
 
         if objects:
-            return biblio,backend
+            return biblio, backend
 
         stream = io.StringIO()
         backend.write_to_stream(biblio, stream)
         contents = stream.getvalue()
         stream.close()
         return contents
-
 
     def getEntry(self, key, label=False, fmt="plaintext", style="unsrtalpha", enc=None):
         """If you only want a single entry from your bibliography and not the
@@ -163,11 +162,11 @@ class BibTeXerClass(object):
         if key.startswith('__'):
             return None
 
-        biblio,backend = self.getBibliography(keys=[key], fmt=fmt, style=style, enc=enc, objects=True)
+        biblio, backend = self.getBibliography(keys=[key], fmt=fmt, style=style, enc=enc, objects=True)
 
         # Disable prologue and the epilogue
-        backend.write_prologue = lambda : None
-        backend.write_epilogue = lambda : None
+        backend.write_prologue = lambda: None
+        backend.write_epilogue = lambda: None
 
         stream = io.StringIO()
         backend.write_to_stream(biblio, stream)
@@ -178,34 +177,37 @@ class BibTeXerClass(object):
             return contents
 
         label_table = {
-            'latex'     : '}',
-            'html'      : '</dt>',
-            'markdown'  : ']',
-            'plaintext' : ']',
-            } # How do we find the end of the label?
+            'latex': '}',
+            'html': '</dt>',
+            'markdown': ']',
+            'plaintext': ']',
+            }  # How do we find the end of the label?
 
         end_of_label = contents.index(label_table[fmt])
-        contents = contents[end_of_label+len(label_table[fmt]):].strip()
+        contents = contents[end_of_label + len(label_table[fmt]):].strip()
 
         # {} are needed to preserve capitalization, but we don't want them in the final output, so remove them
-        contents = contents.replace('{','').replace('}','')
+        contents = contents.replace('{', '').replace('}', '')
 
-        if fmt=="latex":
-            contents = contents.replace(u"\\newblock ","")
-            contents = codecs.encode(contents, "latex")
-        elif fmt=="html":
-            contents = contents.replace(u"<dd>","")
-            contents = contents.replace(u"</dd>","")
+        if fmt == "latex":
+            contents = contents.replace(u"\\newblock ", "")
+            # latexcodec's "latex" codec encodes str -> bytes (ASCII LaTeX); decode
+            # back to str so the trailing newline strip below works and getEntry
+            # returns a consistent str type across all formats.
+            contents = codecs.encode(contents, "latex").decode("utf-8")
+        elif fmt == "html":
+            contents = contents.replace(u"<dd>", "")
+            contents = contents.replace(u"</dd>", "")
 
-        contents = contents.replace(u"\n","")
+        contents = contents.replace(u"\n", "")
 
         return contents
 
 
+# getEntry(self, key, label=False, fmt="markdown", style="unsrtalpha", enc=None):
 
-#getEntry(self, key, label=False, fmt="markdown", style="unsrtalpha", enc=None):
 
-if __name__=='__main__':
+if __name__ == '__main__':
     B = BibTeXerClass('../../../CoolPropBibTeXLibrary.bib')
     print("\nLatex:")
     print(B.getEntry(key='Mulero-JPCRD-2012', fmt='latex'))
@@ -215,9 +217,3 @@ if __name__=='__main__':
     print(B.getEntry(key='Mulero-JPCRD-2012', fmt='markdown'))
     print("\nText:")
     print(B.getEntry(key='Mulero-JPCRD-2012', fmt='plaintext'))
-
-
-
-
-
-

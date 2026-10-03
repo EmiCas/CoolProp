@@ -1,24 +1,24 @@
 
 
-import glob,os
+import glob, os
 
 #  Build a map from REFPROP name to CAS code
 RP2CAS = {}
 for file in glob.glob('C:\\Program Files (x86)\\REFPROP\\fluids\\*.fld'):
-    lines = open(file,'r').readlines()
-    root,RPFluid = os.path.split(file)
-            
+    lines = open(file, 'r').readlines()
+    root, RPFluid = os.path.split(file)
+
     for line in lines:
         if line.find('CAS number') > -1:
             CAS_number = line.split('!')[0].strip()
             if not CAS_number:
-                raise ValueError(file+line)
+                raise ValueError(file + line)
             RP2CAS[RPFluid.split('.')[0]] = CAS_number
             break
 
 #  Handle pseudo-pure fluids
 for file in glob.glob('C:\\Program Files (x86)\\REFPROP\\fluids\\*.ppf'):
-    root,RPFluid = os.path.split(file)
+    root, RPFluid = os.path.split(file)
     RP2CAS[RPFluid.split('.')[0]] = RPFluid
 
 fluid_lookup = """1BUTENE	butene	1-Butene	419.29		*	*	*	-	-	-	2.59	0.5	1	0.983	1.079	-	-	-	-	-	-	-	-	-
@@ -58,7 +58,7 @@ HELIUM	helium	Helium	5.1953	R-704	-	-	-	-	-	-	N/A	-	-	-		-	-	-	-	-	-	-	-	-
 HEPTANE	heptane	n-Heptane	540.13		*	*	*	-	-	-	2.58	0.5	0.5	0.592		-	-	-	-	-	-	-	-	-
 HEXANE	hexane	n-Hexane	507.82		*	3.1	*	-	-	-	2.57	0.5	0.4	0.495	4.94E-01	-	-	-	-	-	-	-	-	-
 HYDROGEN		Hydrogen	33.145	R-702	-	-	-	-	-	-	N/A	-	-	-	4.94E-01	-	-	-	-	-	-	-	-	-
-IBUTENE	2-methyl-1-propene/methylpropene/isobutene/isobutylene	Isobutene	418.09		*	*	*	-	-	-	N/A	0.6	0.6		6.27E-01	-	-	-	-	-	-	6.67E+04		
+IBUTENE	2-methyl-1-propene/methylpropene/isobutene/isobutylene	Isobutene	418.09		*	*	*	-	-	-	N/A	0.6	0.6		6.27E-01	-	-	-	-	-	-	6.67E+04
 IHEXANE	2-methylpentane (methylpentane)	Isohexane	497.7		*	*	*	-	-	-	N/A	-	-	-		-	-	-	-	-	-	-	-	-
 IPENTANE	2-methylbutane	Isopentane	460.35		*	*	*	-	-	-	1.8	0.3	0.3		4.05E-01	-	-	-	-	-	-	-	-	-
 ISOBUTAN	2-methylpropane	IsoButane	407.817		*	*	*	-	-	-	1.74	0.4	0.3		3.07E-01	-	-	-	-	-	-	-	-	-
@@ -132,7 +132,7 @@ TOLUENE	methylbenzane	Toluene	591.75		N/A	3.3	N/A	-	-	-	1.95	0.5	0.6	0.565	6.4E-
 WATER		Water	647.096		***	***	***	-	-	-	N/A	-	-	-	-	-	-	-	-	-	-	-	-	-
 XENON		Xenon	289.733		-	-	-	-	-	-	N/A	-	-	-	-	-	-	-	-	-	-	-	-	-"""
 
-name_dict,ODP_dict,GWP20_dict,GWP100_dict,GWP500_dict = {},{},{},{},{}
+name_dict, ODP_dict, GWP20_dict, GWP100_dict, GWP500_dict = {}, {}, {}, {}, {}
 
 for row in fluid_lookup.split('\n'):
     a = row.split('\t')
@@ -141,13 +141,13 @@ for row in fluid_lookup.split('\n'):
 
     #  CAS number for this fluid
     CAS = RP2CAS[RPName]
-    
+
     name_dict[CAS] = a[2].strip()
     ODP_dict[CAS] = a[10].strip()
     GWP20_dict[CAS] = a[5].strip()
     GWP100_dict[CAS] = a[6].strip()
     GWP500_dict[CAS] = a[7].strip()
-    
+
 ASHRAE34data = """R11	A1
 R12	A1
 R13	A1
@@ -203,8 +203,8 @@ for row in ASHRAE34data.split('\n'):
     if a[0] in RP2CAS:
         ASHRAE34_dict[RP2CAS[a[0]]] = a[1]
     else:
-        print 'Missing CAS number for ' + a[0]
-    
+        print('Missing CAS number for ' + a[0])
+
 fluids = """:'1BUTENE.FLD','ACETONE.FLD','AIR.PPF','AMMONIA.FLD','ARGON.FLD',
 :'BENZENE.FLD','BUTANE.FLD','C1CC6.FLD','C2BUTENE.FLD','C3CC6.FLD',
 :'C4F10.FLD','C5F12.FLD','C12.FLD','CF3I.FLD','CO.FLD','CO2.FLD',
@@ -246,7 +246,7 @@ HH = """:'0','2','0','3','0',
 :'1','1','1','NA','2',
 :'1','NA','1','NA','2',
 :'NA','1','1','1','1',
-:'3','0','2','0','0',  
+:'3','0','2','0','0',
 :'1','1','NA','NA','NA','1',
 :'1','1','1','2','1','1',
 :'1','1','1','1'"""
@@ -269,7 +269,7 @@ FH = """:'4','3','0','1','0',
 :'1','1','1','NA','1',
 :'0','NA','0','NA','0',
 :'NA','1','2','2','0',
-:'0','4','3','0','0',  
+:'0','4','3','0','0',
 :'1','1','NA','NA','NA','1',
 :'1','0','0','1','1','4',
 :'1','1','1','0' """
@@ -292,55 +292,57 @@ PH = """:'0','0','0','0','0',
 :'0','0','0','NA','1',
 :'0','NA','1','NA','1',
 :'NA','0','0','0','0',
-:'0','1','0','0','3',  
+:'0','1','0','0','3',
 :'0','0','NA','NA','NA','0',
 :'0','0','0','0','0','1',
 :'0','0','0','2'"""
 
-pp_fluids = fluids.replace(':','').replace('\n','').replace('.FLD','').replace('.PPF','').replace("'",'').split(",")
-pp_HH = HH.replace(':','').replace('\n','').replace("'",'').split(",")
-pp_FH = FH.replace(':','').replace('\n','').replace("'",'').split(",")
-pp_PH = PH.replace(':','').replace('\n','').replace("'",'').split(",")
+pp_fluids = fluids.replace(':', '').replace('\n', '').replace('.FLD', '').replace('.PPF', '').replace("'", '').split(",")
+pp_HH = HH.replace(':', '').replace('\n', '').replace("'", '').split(",")
+pp_FH = FH.replace(':', '').replace('\n', '').replace("'", '').split(",")
+pp_PH = PH.replace(':', '').replace('\n', '').replace("'", '').split(",")
 
-HH_dict = {RP2CAS[k]:v for k,v in zip(pp_fluids,pp_HH)}
-FH_dict = {RP2CAS[k]:v for k,v in zip(pp_fluids,pp_FH)}
-PH_dict = {RP2CAS[k]:v for k,v in zip(pp_fluids,pp_PH)}
+HH_dict = {RP2CAS[k]: v for k, v in zip(pp_fluids, pp_HH)}
+FH_dict = {RP2CAS[k]: v for k, v in zip(pp_fluids, pp_FH)}
+PH_dict = {RP2CAS[k]: v for k, v in zip(pp_fluids, pp_PH)}
+
 
 def get_env_data(fluid):
     a = dict(
-        HH = HH_dict[fluid],
-        FH = FH_dict[fluid],
-        PH = PH_dict[fluid],
-        ODP = ODP_dict[fluid],
-        GWP20 = GWP20_dict[fluid],
-        GWP100 = GWP100_dict[fluid],
-        GWP500 = GWP500_dict[fluid]
+        HH=HH_dict[fluid],
+        FH=FH_dict[fluid],
+        PH=PH_dict[fluid],
+        ODP=ODP_dict[fluid],
+        GWP20=GWP20_dict[fluid],
+        GWP100=GWP100_dict[fluid],
+        GWP500=GWP500_dict[fluid]
         )
-        
-    for k,v in a.iteritems():
+
+    for k, v in a.iteritems():
         try:
             a[k] = int(v)
         except ValueError:
             try:
                 a[k] = float(v)
-            except ValueError: 
+            except ValueError:
                 a[k] = -1
-                
-    for term in ['GWP100','GWP20','GWP500','ODP']:
+
+    for term in ['GWP100', 'GWP20', 'GWP500', 'ODP']:
         try:
             a[term] = float(a[term])
         except TypeError:
             a[term] = -1
-        
+
     if fluid in ASHRAE34_dict:
         a['ASHRAE34'] = ASHRAE34_dict[fluid]
     else:
         a['ASHRAE34'] = 'UNKNOWN'
-        
+
     a['Name'] = name_dict[fluid]
-    
+
     return a
-        
+
+
 import json
 
 code = {}
@@ -351,6 +353,6 @@ for fluid in pp_fluids:
     else:
         continue
 
-f = open('DTU_environmental.json','w')
+f = open('DTU_environmental.json', 'w')
 f.write(json.dumps(code, sort_keys=True, indent=2, separators=(',', ': ')))
 f.close()

@@ -1,13 +1,13 @@
 from __future__ import print_function
 import os.path
-import CoolProp
+import CoolProp, CoolProp.CoolProp as CP
 import subprocess
 import sys
 
 web_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 root_dir = os.path.abspath(os.path.join(web_dir, '..'))
-fluids_path = os.path.join(web_dir,'fluid_properties','fluids')
-plots_path = os.path.join(web_dir,'fluid_properties','fluids','REFPROPplots')
+fluids_path = os.path.join(web_dir, 'fluid_properties', 'fluids')
+plots_path = os.path.join(web_dir, 'fluid_properties', 'fluids', 'REFPROPplots')
 
 template = """
 from __future__ import division, print_function
@@ -73,7 +73,7 @@ plt.xlabel(r'Reduced density [$\\rho/\\rho_c$]')
 plt.ylabel(r'Relative deviation $(y_{{CP}}/y_{{RP}}-1)\\times 100$ [%]')
 
 ax.set_yscale('log')
-plt.title('Comparison of results between CoolProp and REFPROP along T = 1.01*Tc')
+plt.title('Comparison between CoolProp and REFPROP({rpv:s}) along T = 1.01*Tc')
 plt.savefig(fluid+'.png', dpi = 100)
 plt.savefig(fluid+'.pdf')
 plt.close('all')
@@ -84,13 +84,13 @@ if not os.path.exists(plots_path):
     os.makedirs(plots_path)
 
 with open(os.path.join(plots_path, 'matplotlibrc'), 'w') as fp:
-        fp.write("backend : agg\n")
+    fp.write("backend : agg\n")
 
 for fluid in CoolProp.__fluids__:
     print('fluid:', fluid)
-    file_string = template.format(fluid = fluid)
+    file_string = template.format(fluid=fluid, rpv=CP.get_global_param_string("REFPROP_version"))
     file_path = os.path.join(plots_path, fluid + '.py')
     print('Writing to', file_path)
     with open(file_path, 'w') as fp:
         fp.write(file_string)
-    subprocess.check_call('python "' + fluid + '.py"', cwd = plots_path, stdout = sys.stdout, stderr = sys.stderr, shell = True)
+    subprocess.check_call('python "' + fluid + '.py"', cwd=plots_path, stdout=sys.stdout, stderr=sys.stderr, shell=True)

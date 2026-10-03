@@ -8,18 +8,45 @@ Javascript Wrapper
 Pre-Compiled Binaries
 =====================
 
-* Download the precompiled binaries from :sfdownloads:`Javascript`, or the development versions from the buildbot server at :sfnightly:`Javascript`
+* Download the precompiled binaries from :sfdownloads:`Javascript`, or the nightly development versions at :sfnightly:`Javascript`. Remember to get both files, ``coolprop.js`` and ``coolprop.wasm``.
 
-* Load your js file into your website, following the structure of `the example here <https://github.com/CoolProp/CoolProp/blob/master/Web/coolprop/wrappers/Javascript/index.html>`_, which is also included at the above download link
+* You can load your js file into your website, following the structure of `the example here <https://github.com/CoolProp/CoolProp/blob/master/Web/coolprop/wrappers/Javascript/index.html>`_, which is also included at the above download.
 
-* You can also build your website and include our hosted Javascript repository. You will never ever have to update your library by linking directly to ``<script src="http://www.coolprop.sourceforge.net/jscript/coolprop-latest.js"></script>`` in your HTML header. Until now, this file does not get updated automatically, so please file an issue on 
+* A live demo of the Javascript library in action can be found in the `CoolPropJavascriptDemo <https://github.com/dvd101x/CoolPropJavascriptDemo>`_ repository.
+
+
+Serving the JS
+==============
+
+The .wasm file can cause some problems for hosting emscripten-compiled JS files.  When locally hosting, you need to ensure that the .wasm file extension is served with MIME type ``application/wasm``.  A simple webserver config in Python 3 for testing CoolProp (with proper hosting of the WASM) could read::
+
+    import http.server
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    port=8000
+    print("Running on port %d" % port)
+
+    http.server.SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
+    httpd = HTTPServer(('localhost', port), http.server.SimpleHTTPRequestHandler)
+
+    print("Mapping \".wasm\" to \"%s\"" %
+    http.server.SimpleHTTPRequestHandler.extensions_map['.wasm'])
+    httpd.serve_forever()
+
+On Apache, you need to `setup the server appropriately <https://emscripten.org/docs/compiling/WebAssembly.html?highlight=apache#web-server-setup>`_.
 
 User-Compiled Binaries
 ======================
 
-Linux
------
-We are following the instructions from `emscripten.org <http://kripken.github.io/emscripten-site/docs/getting_started/downloads.html>`_ - download the portable emscripten SDK `emsdk` for linux.
+Docker
+------
+
+We run the emscripten-based builds in a docker container and you can follow `the CI example here <https://github.com/CoolProp/CoolProp/blob/master/.github/workflows/javascript_builder.yml>`_, which is also the script that generates the official downloads.
+
+
+Linux (deprecated)
+------------------
+We are following the instructions from `emscripten.org <https://kripken.github.io/emscripten-site/docs/getting_started/downloads.html>`_ - download the portable emscripten SDK `emsdk` for linux.
 
 1. First download node.js, clang++ and llvm using::
 
@@ -45,7 +72,7 @@ We are following the instructions from `emscripten.org <http://kripken.github.io
 
 8. Check out coolprop::
 
-    git clone https://github.com/CoolProp/CoolProp --recursive
+    git clone https://github.com/CoolProp/CoolProp
 
 9. Folder creating::
 
@@ -55,9 +82,9 @@ We are following the instructions from `emscripten.org <http://kripken.github.io
 
      cmake .. -DCOOLPROP_JAVASCRIPT_MODULE=ON -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN}/cmake/Modules/Platform/Emscripten.cmake
 
-Windows
--------
-1. Download the `EMSDK installer <http://kripken.github.io/emscripten-site/docs/getting_started/downloads.html>`_, run the web download installer, that will install everything, and get you ready.
+Windows (deprecated)
+--------------------
+1. Download the `EMSDK installer <https://kripken.github.io/emscripten-site/docs/getting_started/downloads.html>`_, run the web download installer, that will install everything, and get you ready.
 
 2. In the ``%HOME%/.emscripten`` file, make sure that there is only one entry for NODE_JS and it points to the right place.  Mine looks like::
 

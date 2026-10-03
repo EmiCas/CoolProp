@@ -17,43 +17,56 @@
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
+
+import subprocess
+import sys
+from pathlib import Path
+import urllib.request
+import zipfile
+
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+
+def _download(url, dest):
+    """Download url to dest with automatic retries on transient failures."""
+    session = requests.Session()
+    session.mount("https://", HTTPAdapter(max_retries=Retry(
+        total=5, backoff_factor=2, status_forcelist=[429, 500, 502, 503, 504]
+    )))
+    response = session.get(url, timeout=60)
+    response.raise_for_status()
+    Path(dest).write_bytes(response.content)
+
 import CoolProp
 ver = CoolProp.__version__
+num_pure_fluids = len(CoolProp.__fluids__)
 # The short X.Y version.
-version = ver.rsplit('.',1)[0]
+version = ver.rsplit('.', 1)[0]
 # The full version, including alpha/beta/rc tags.
 release = ver
 
 # Some hacking to determine release or nightly build
-if ver[-2]=="." and ver[-1].isdigit()>=0 and ver[-3].isdigit()>=0: 
+if ver[-2] == "." and ver[-1].isdigit() >= 0 and ver[-3].isdigit() >= 0:
     isRelease = True
 else:
     isRelease = False
-    
+
 print("------------ Project information ------------")
-print("Detected version: "+version)
-print("Detected release: "+release)
-print("Public release  : "+ ("True" if isRelease else "False") )
-print(" ")
+print("Detected version: %s" % version)
+print("Detected release: %s" % release)
+print("Public release  : %s" % "True" if isRelease else "False")
+print("")
 
-if isRelease:
-    extlinks = {'sfdownloads': ('http://sourceforge.net/projects/coolprop/files/CoolProp/'+release+'/%s',''),
-                'sfnightly'  : ('http://sourceforge.net/projects/coolprop/files/CoolProp/nightly/%s',''),
-                #'bbbinaries' : ('http://www.coolprop.dreamhosters.com:8010/binaries/%s',''),
-                #'bbsphinx'   : ('http://www.coolprop.dreamhosters.com:8010/sphinx/%s','')
-                }
-else:
-    extlinks = {'sfdownloads': ('http://sourceforge.net/projects/coolprop/files/CoolProp/'+release+'/%s',''),
-                'sfnightly'  : ('http://www.coolprop.dreamhosters.com/binaries/%s',''),
-                #'bbbinaries' : ('http://www.coolprop.dreamhosters.com:8010/binaries/%s',''),
-                #'bbsphinx'   : ('http://www.coolprop.dreamhosters.com:8010/sphinx/%s','')
-                }
-
+extlinks = {'sfdownloads': (f'https://sourceforge.net/projects/coolprop/files/CoolProp/{release}/%s', f'{release} %s'),
+            'sfnightly': ('https://sourceforge.net/projects/coolprop/files/CoolProp/nightly/%s', 'nightly %s'),
+            }
 import sys, os, datetime
 
-#~ # If your extensions are in another directory, add it here. If the directory
-#~ # is relative to the documentation root, use os.path.abspath to make it
-#~ # absolute, like shown here.
+# ~ # If your extensions are in another directory, add it here. If the directory
+# ~ # is relative to the documentation root, use os.path.abspath to make it
+# ~ # absolute, like shown here.
 #~ sys.path.append(os.path.abspath('sphinxext'))
 
 sys.path.insert(0, os.path.abspath('_ext'))
@@ -63,14 +76,26 @@ except ImportError:
 
     print('Unable to import sphinxcontrib.doxylink; try to run "pip install sphinxcontrib-doxylink"')
 
-if isRelease:
-    doxylink = {
-        'cpapi' : ('_static/doxygen/CoolPropDoxyLink.tag', 'http://www.coolprop.org/_static/doxygen/html')
-    }
-else:
-    doxylink = {
-        'cpapi' : ('_static/doxygen/CoolPropDoxyLink.tag', 'http://www.coolprop.dreamhosters.com/binaries/sphinx/_static/doxygen/html')
-    }
+# Docs deploy only on tags to GitHub Pages root (see docs_docker-run.yml), so
+# there is no separate /dev/ subtree anymore — the old dev path 404s.  Point
+# both release and dev builds at the single published Doxygen tree.
+doxylink = {
+    'cpapi': ('_static/doxygen/CoolPropDoxyLink.tag', 'https://coolprop.org/_static/doxygen/html')
+}
+
+# Execute all the notebooks.
+# Timeout is bumped from nbconvert's 30 s default to 1 h to accommodate
+# notebooks that lazy-build expensive on-disk caches on first run
+# (notably SVDSBTLValidation.ipynb, which builds SVDSBTL surfaces per fluid
+# at ~20-80 s each on a cold cache). Applies globally — any notebook that
+# legitimately hangs for an hour was broken anyway.
+for dirpath, _dirnames, filenames in Path(__file__).parent.walk():
+    for file in filenames:
+        if file.endswith('.ipynb') and '.ipynb_checkpoints' not in str(dirpath) and '_build' not in str(dirpath):
+            cmd = f'jupyter nbconvert --allow-errors --ExecutePreprocessor.timeout=3600 --to notebook --output "{file}" --execute "{file}"'
+            print(f"About to run: {cmd} in {dirpath}")
+            subprocess.check_output(cmd, shell=True, cwd=dirpath)
+
 
 # -- General configuration -----------------------------------------------------
 
@@ -83,40 +108,54 @@ extensions = ['IPython.sphinxext.ipython_console_highlighting',
               'sphinx.ext.mathjax',
               'sphinx.ext.extlinks',
               'sphinxcontrib.bibtex',
-              'sphinxcontrib.napoleon',
+              'sphinx.ext.napoleon',
               'sphinxcontrib.doxylink',
               'matplotlib.sphinxext.plot_directive',
               'edit_on_github',  # see https://gist.github.com/mgedmin/6052926#file-edit_on_github-pyb
 
-              # cloud's extensions
-            #'cloud_sptheme.ext.autodoc_sections',
-            #'cloud_sptheme.ext.index_styling',
-            'cloud_sptheme.ext.relbar_toc',
-            #'cloud_sptheme.ext.escaped_samp_literals',
-            'cloud_sptheme.ext.issue_tracker',
-            #'cloud_sptheme.ext.table_styling',
-
-              #'inheritance_diagram',
-              #'numpydoc',
-              #'breathe'
+              # 'inheritance_diagram',
+              # 'numpydoc',
+              # 'breathe'
+              "nbsphinx",
+              "sphinx_design",
               ]
 
 # set path to issue tracker:
 issue_tracker_url = "gh:CoolProp/CoolProp"
 
-plot_formats = [('png',80)]
+plot_formats = [('png', 80), ('.pdf')]
 
 index_doc = "index"
 
 numpydoc_show_class_members = False
 
-mathjax_path = 'http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'
+
+zfile = Path("MJ.zip")
+if not zfile.exists():
+    _download("https://github.com/mathjax/MathJax/archive/refs/tags/4.0.0.zip", zfile)
+with zipfile.ZipFile(zfile) as z:
+    z.extractall(path=Path(__file__).parent / '_static')
+mathjax_path = "MathJax-4.0.0/tex-mml-chtml.js"
+assert (Path(__file__).parent / '_static' / mathjax_path).exists()
+# Disable the SRE accessibility features that use fetch() to load mathmaps JSON files.
+# Those fetch() calls are blocked by CORS when the docs are viewed from file:// URLs.
+mathjax3_config = {
+    'options': {
+        'enableExplorer': False,
+        'enableAssistiveMml': False,
+    }
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
 # The suffix of source filenames.
-source_suffix = '.rst'
+source_suffix = {'.rst': 'restructuredtext'}
+
+# Substitutions available in every .rst file (auto-generated from CoolProp)
+rst_prolog = """
+.. |num_pure_fluids| replace:: {num_pure_fluids}
+""".format(num_pure_fluids=num_pure_fluids)
 
 # The encoding of source files.
 source_encoding = 'utf-8'
@@ -144,7 +183,7 @@ copyright = u'2010-{0}, Ian H. Bell and the CoolProp Team'.format(d.year)
 
 # List of directories, relative to source directory, that shouldn't be searched
 # for source files.
-exclude_trees = ['_build','sphinxext']
+exclude_trees = ['_build', 'sphinxext']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -166,12 +205,41 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
-#This value selects what content will be inserted into the main body of an autoclass directive.
-#'class' - Only the class’ docstring is inserted. This is the default.
-#'init' - Only the __init__ method’s docstring is inserted.
-#'both' - Both the class’ and the __init__ method’s docstring are concatenated and inserted
+# This value selects what content will be inserted into the main body of an autoclass directive.
+# 'class' - Only the class’ docstring is inserted. This is the default.
+# 'init' - Only the __init__ method’s docstring is inserted.
+# 'both' - Both the class’ and the __init__ method’s docstring are concatenated and inserted
 autoclass_content = 'both'
 
+## Don't generate HTML5 docs, recommendation from https://stackoverflow.com/a/56822558
+#html4_writer = True
+
+# Fix the bibtext extension
+bibtex_bibfiles = ["../CoolPropBibTeXLibrary.bib"]
+
+# -- Options for the linkcheck builder -----------------------------------------
+# `make linkcheck` (also run non-blocking in CI) reports dead URLs.  Tune it so
+# the signal is useful and not drowned in false positives.
+linkcheck_timeout = 20
+linkcheck_retries = 2
+linkcheck_workers = 10
+# Don't check intra-page #anchors — many target sites are JS-rendered and report
+# spurious anchor-missing failures.
+linkcheck_anchors = False
+linkcheck_ignore = [
+    # Intentional placeholders that are not real URLs.
+    r'https?://YOURUSERNAME\.pythonanywhere\.com.*',
+    r'.*/CoolProp/X\.X\.X/.*',
+    r'https?://10\.0\.2\.2.*',          # Android emulator loopback address
+    # XML namespaces written as http:// URIs — not resolvable links.
+    r'https?://schemas\.android\.com/.*',
+    # Sites that hard-block automated requests (403/429) but work in a browser;
+    # these are stable canonical links (journal DOIs, package indexes).
+    r'https?://pubs\.acs\.org/.*',
+    r'https?://www\.tandfonline\.com/.*',
+    r'https?://braumeister\.org/.*',
+    r'https?://.*\.amazonaws\.com/.*',
+]
 
 # -- Options for HTML output ---------------------------------------------------
 
@@ -180,36 +248,46 @@ try:
 except:
     print('unable to import cloud_sptheme as csp; try a "pip install cloud_sptheme"')
 
-# import Cloud
-import cloud_sptheme as csp
+
 
 # ... some contents omitted ...
 
 # set the html theme
-html_theme = "cloud"
-    # NOTE: there is also a red-colored version named "redcloud"
+html_theme = "pydata_sphinx_theme"
 
-# ... some contents omitted ...
-
-# set the theme path to point to cloud's theme data
-html_theme_path = [csp.get_theme_dir()]
-
-# [optional] set some of the options listed above...
-html_theme_options = { "roottarget": "index",
-                       "max_width" : "13in",
-                       "logotarget": "index",
-                       "googleanalytics_id": "UA-53205480-2"
-                       }
-
+html_theme_options = {
+    "navbar_center": ["navbar-center.html"],
+}
 edit_on_github_project = 'CoolProp/CoolProp'
 edit_on_github_branch = 'master'
 edit_on_github_path_prefix = 'Web'
+
+                    # import Cloud
+                    # import cloud_sptheme as csp
+                    # #html_theme = "cloud"
+                    #     # NOTE: there is also a red-colored version named "redcloud"
+
+                    # # ... some contents omitted ...
+
+                    # # set the theme path to point to cloud's theme data
+                    # html_theme_path = [csp.get_theme_dir()]
+
+                    # # [optional] set some of the options listed above...
+                    # html_theme_options = {"roottarget": "index",
+                    #                        "max_width": "13in",
+                    #                        "logotarget": "index",
+                    #                        "googleanalytics_id": "UA-53205480-2",
+                    #                        "default_layout_text_size": "85%",
+                    #                        "table_style_default_align": "left"
+                    #                        }
+
+                    
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
 ## html_theme = 'sphinxdoc'
 
-## html_theme='nature'
+# html_theme='nature'
 
 # The style sheet to use for HTML and HTML Help pages. A file of that name
 # must exist either in Sphinx' static/ path, or in one of the custom paths
@@ -233,7 +311,9 @@ edit_on_github_path_prefix = 'Web'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = "_static/CoolPropLogoLong.png"
+html_logo = "_static/CoolPropLogo.png"
+
+assert(Path(html_logo).exists())
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -244,6 +324,20 @@ html_logo = "_static/CoolPropLogoLong.png"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# 3Dmol.js — required for the interactive molecule viewers on fluid pages.
+# Download locally to avoid CORS issues when docs are served from file:// or a local server.
+# Fetched from jsDelivr (CDN-backed npm mirror) with a pinned version, rather than the
+# single-host 3dmol.org/build/ path, which has intermittently timed out from CI runners.
+_3DMOL_VERSION = "2.5.4"
+_3dmol_js = Path(__file__).parent / '_static' / '3Dmol-min.js'
+if not _3dmol_js.exists():
+    _download(f'https://cdn.jsdelivr.net/npm/3dmol@{_3DMOL_VERSION}/build/3Dmol-min.js', _3dmol_js)
+# Priority 450 ensures 3Dmol-min.js loads before require.js (added by sphinx.ext.mathjax
+# at priority 500). If 3Dmol loads after require.js, its AMD detection kicks in and
+# define([], factory) is called but never executed, silently preventing $3Dmol from being set.
+html_js_files = [('3Dmol-min.js', {'priority': 450}), 'sponsor-banner.js']
+html_css_files = ['sponsor-banner.css']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

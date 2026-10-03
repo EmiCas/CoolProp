@@ -1,5 +1,4 @@
 import json, sys
-from six import string_types
 
 header_template = """
 [
@@ -69,8 +68,8 @@ high_level_interface = [
     "",
     {
         "type": "comment",
-        "comment": "See http://www.coolprop.org/coolprop/HighLevelAPI.html#table-of-string-inputs-to-propssi-function for a list of inputs to high-level interface",
-        "EOL":True
+        "comment": "See https://www.coolprop.org/coolprop/HighLevelAPI.html#table-of-string-inputs-to-propssi-function for a list of inputs to high-level interface",
+        "EOL": True
     },
     {
         "type": "print",
@@ -157,7 +156,7 @@ high_level_interface = [
     "",
     {
         "type": "print",
-        "arguments": [ "'*********** HUMID AIR PROPERTIES *****************'" ],
+        "arguments": ["'*********** HUMID AIR PROPERTIES *****************'"],
         "EOL":True
     },
     {
@@ -183,12 +182,12 @@ high_level_interface = [
                 "type": "function",
                 "function": "HAPropsSI",
                 "arguments": [
-                    "'R'", "'T'", "300", "'P'", "101325", "'W'", 
+                    "'R'", "'T'", "300", "'P'", "101325", "'W'",
                     {
                         "type": "function",
                         "function": "HAPropsSI",
                         "arguments": [
-                            "'W'", "'T'", "300", "'P'", "101325", "'R'", "0.5" 
+                            "'W'", "'T'", "300", "'P'", "101325", "'R'", "0.5"
                         ]
                     }
                 ]
@@ -200,7 +199,7 @@ high_level_interface = [
     "",
     {
         "type": "print",
-        "arguments": [ "'*********** INCOMPRESSIBLE FLUID AND BRINES *****************'" ],
+        "arguments": ["'*********** INCOMPRESSIBLE FLUID AND BRINES *****************'"],
         "EOL":True
     },
     {
@@ -237,11 +236,25 @@ high_level_interface = [
     {
         "type": "comment",
         "comment": "If you don't have REFPROP installed, disable the following lines",
+        "EOL": True
+    },
+    {
+        "type": "print",
+        "arguments": ["'*********** REFPROP *****************'"],
         "EOL":True
     },
     {
         "type": "print",
-        "arguments": [ "'*********** REFPROP *****************'" ],
+        "arguments": [
+            "'REFPROP version:'",
+            {
+                "type": "function",
+                "function": "get_global_param_string",
+                "arguments": [
+                    "'REFPROP_version'"
+                ]
+            }
+        ],
         "EOL":True
     },
     {
@@ -252,7 +265,7 @@ high_level_interface = [
                 "type": "function",
                 "function": "Props1SI",
                 "arguments": [
-                    "'REFPROP::Water'",
+                    "'REFPROP::WATER'",
                     "'Tcrit'"
                 ]
             },
@@ -268,7 +281,7 @@ high_level_interface = [
                 "type": "function",
                 "function": "PropsSI",
                 "arguments": [
-                    "'T'", "'P'", "101325", "'Q'", "0", "'REFPROP::Water'"
+                    "'T'", "'P'", "101325", "'Q'", "0", "'REFPROP::WATER'"
                 ]
             },
             "'K'"
@@ -283,7 +296,7 @@ high_level_interface = [
                 "type": "function",
                 "function": "PropsSI",
                 "arguments": [
-                    "'C'", "'P'", "101325", "'T'", "300", "'REFPROP::Water'"
+                    "'C'", "'P'", "101325", "'T'", "300", "'REFPROP::WATER'"
                 ]
             },
             "'J/kg/K'"
@@ -295,7 +308,7 @@ low_level_interface_with_mixtures = [
     "",
     {
         "type": "print",
-        "arguments": [ "'*********** LOW-LEVEL INTERFACE *****************'" ],
+        "arguments": ["'*********** LOW-LEVEL INTERFACE *****************'"],
         "EOL":True
     },
     {
@@ -315,7 +328,7 @@ low_level_interface_with_mixtures = [
         "type": "custom_assignment",
         "variable_name": "z",
         "variable_type": "vector",
-        "RHS":{
+        "RHS": {
             "type": "vector",
             "arguments": [
                 "0.5",
@@ -351,14 +364,14 @@ low_level_interface_with_mixtures = [
                     "101325", "1"
                 ]
             },
-        "EOL":True
+        "EOL": True
     },
     {
         "type": "print",
         "arguments": [
             "'Normal boiling point temperature of water and ethanol:'",
             {
-                
+
                 "type": "class_dereference",
                 "name": "AS",
                 "RHS": {
@@ -375,11 +388,11 @@ low_level_interface_with_mixtures = [
     {
         "type": "comment",
         "comment": "If you don't have REFPROP installed, disable the following block",
-        "EOL":True
+        "EOL": True
     },
     {
         "type": "print",
-        "arguments": [ "'*********** LOW-LEVEL INTERFACE (REFPROP) *****************'" ],
+        "arguments": ["'*********** LOW-LEVEL INTERFACE (REFPROP) *****************'"],
         "EOL":True
     },
     {
@@ -390,7 +403,7 @@ low_level_interface_with_mixtures = [
                 "type": "function",
                 "function": "factory",
                 "arguments": [
-                    "'REFPROP'", "'Methane&Ethane'"
+                    "'REFPROP'", "'METHANE&ETHANE'"
                 ]
             },
         "EOL":True
@@ -399,7 +412,7 @@ low_level_interface_with_mixtures = [
         "type": "custom_assignment",
         "variable_name": "z2",
         "variable_type": "vector",
-        "RHS":{
+        "RHS": {
             "type": "vector",
             "arguments": [
                 "0.2",
@@ -435,14 +448,14 @@ low_level_interface_with_mixtures = [
                     "1", "120"
                 ]
             },
-        "EOL":True
+        "EOL": True
     },
     {
         "type": "print",
         "arguments": [
             "'Vapor molar density:'",
             {
-                
+
                 "type": "class_dereference",
                 "name": "AS2",
                 "RHS": {
@@ -459,7 +472,7 @@ low_level_interface_with_mixtures = [
             },
             "'mol/m^3'"
         ],
-        "EOL":True
+        "EOL": True
     }
 ]
 
@@ -467,7 +480,7 @@ low_level_interface = [
     "",
     {
         "type": "print",
-        "arguments": [ "'*********** TABULAR BACKENDS *****************'" ],
+        "arguments": ["'*********** TABULAR BACKENDS *****************'"],
         "EOL":True
     },
     {
@@ -498,14 +511,14 @@ low_level_interface = [
                     "101325", "300"
                 ]
             },
-        "EOL":True
+        "EOL": True
     },
     {
         "type": "print",
         "arguments": [
             "'Mass density of refrigerant R245fa at 300 K, 101325 Pa:'",
             {
-                
+
                 "type": "class_dereference",
                 "name": "TAB",
                 "RHS": {
@@ -520,7 +533,7 @@ low_level_interface = [
     },
     {
         "type": "print",
-        "arguments": [ "'*********** SATURATION DERIVATIVES (LOW-LEVEL INTERFACE) ***************'" ],
+        "arguments": ["'*********** SATURATION DERIVATIVES (LOW-LEVEL INTERFACE) ***************'"],
         "EOL":True
     },
     {
@@ -551,14 +564,14 @@ low_level_interface = [
                     "101325", "0"
                 ]
             },
-        "EOL":True
+        "EOL": True
     },
     {
         "type": "print",
         "arguments": [
             "'First saturation derivative:'",
             {
-                
+
                 "type": "class_dereference",
                 "name": "AS_SAT",
                 "RHS": {
@@ -580,12 +593,13 @@ low_level_interface = [
             },
             "'Pa/K'"
         ],
-        "EOL":True
+        "EOL": True
     }
 ]
 
+
 class BaseParser(object):
-    
+
     def __init__(self):
         self.pieces = high_level_interface + low_level_interface + low_level_interface_with_mixtures
 
@@ -595,7 +609,7 @@ class BaseParser(object):
     def parse(self):
         lines = []
         for line in self.pieces:
-            if isinstance(line, string_types):
+            if isinstance(line, str):
                 lines.append(line)
             elif isinstance(line, dict):
                 lines.append(self.dict2string(line))
@@ -614,10 +628,11 @@ class BaseParser(object):
         else:
             return name
 
+
 class Python(BaseParser):
 
-    function_name_mapping = dict(Props1SI = 'PropsSI',
-                                 factory = 'AbstractState')
+    function_name_mapping = dict(Props1SI='PropsSI',
+                                 factory='AbstractState')
     type_name_mapping = {'vector': None,
                          'AbstractState': None}
     enum_name_mapping = {'input_pairs': "CoolProp", 'parameters': "CoolProp"}
@@ -626,7 +641,7 @@ class Python(BaseParser):
     def parse_arguments(self, arguments):
         out = []
         for arg in arguments:
-            if isinstance(arg, string_types) and arg[0] == "'" and arg[-1] == "'":
+            if isinstance(arg, str) and arg[0] == "'" and arg[-1] == "'":
                 out.append('\"' + arg[1:-1] + '\"')
             elif isinstance(arg, dict):
                 out.append(self.dict2string(arg))
@@ -638,7 +653,7 @@ class Python(BaseParser):
         if d['type'] == 'comment':
             return '# ' + d['comment']
         elif d['type'] == 'function':
-            return self.map_function(d['function'])  + '(' + ', '.join(self.parse_arguments(d['arguments'])) + ')'
+            return self.map_function(d['function']) + '(' + ', '.join(self.parse_arguments(d['arguments'])) + ')'
         elif d['type'] == 'print':
             return 'print(' + ', '.join(self.parse_arguments(d['arguments'])) + ')'
         elif d['type'] == 'vector':
@@ -664,24 +679,25 @@ class Python(BaseParser):
                           'import CoolProp.CoolProp as CoolProp',
                           'from CoolProp.HumidAirProp import HAPropsSI',
                           'from math import sin\n'])
-                          
+
+
 class Octave(BaseParser):
 
-    function_name_mapping = dict(Props1SI = 'CoolProp.Props1SI',
-                                 PropsSI = 'CoolProp.PropsSI',
-                                 PhaseSI = 'CoolProp.PhaseSI',
-                                 HAPropsSI = 'CoolProp.HAPropsSI',
-                                 get_global_param_string = 'CoolProp.get_global_param_string',
-                                 factory = 'AbstractState.factory')
+    function_name_mapping = dict(Props1SI='CoolProp.Props1SI',
+                                 PropsSI='CoolProp.PropsSI',
+                                 PhaseSI='CoolProp.PhaseSI',
+                                 HAPropsSI='CoolProp.HAPropsSI',
+                                 get_global_param_string='CoolProp.get_global_param_string',
+                                 factory='AbstractState.factory')
     type_name_mapping = {'vector': None,
                          'AbstractState': None}
     enum_name_mapping = {'input_pairs': "CoolProp", 'parameters': "CoolProp"}
-    indentation = ' '*0
+    indentation = ' ' * 0
 
     def parse_arguments(self, arguments):
         out = []
         for arg in arguments:
-            if isinstance(arg, string_types) and arg[0] == "'" and arg[-1] == "'":
+            if isinstance(arg, str) and arg[0] == "'" and arg[-1] == "'":
                 out.append('\'' + arg[1:-1] + '\'')
             elif isinstance(arg, dict):
                 out.append(self.dict2string(arg))
@@ -693,7 +709,7 @@ class Octave(BaseParser):
         if d['type'] == 'comment':
             l = '% ' + d['comment']
         elif d['type'] == 'function':
-            l = self.map_function(d['function'])  + '(' + ', '.join(self.parse_arguments(d['arguments'])) + ')'
+            l = self.map_function(d['function']) + '(' + ', '.join(self.parse_arguments(d['arguments'])) + ')'
         elif d['type'] == 'print':
             args = self.parse_arguments(d['arguments'])
             args = ['num2str(' + arg + ')' for arg in args]
@@ -711,37 +727,37 @@ class Octave(BaseParser):
                 LHS = type_name + ' ' + d['variable_name']
             else:
                 LHS = d['variable_name']
-            
+
             if d['RHS']['type'] != 'vector':
                 RHS = self.dict2string(d['RHS'])
-            else: # Custom processing for vector assignment
-                pushes = [d['variable_name']+'.push_back(' + arg +');' for arg in d['RHS']['arguments']]
+            else:  # Custom processing for vector assignment
+                pushes = [d['variable_name'] + '.push_back(' + arg + ');' for arg in d['RHS']['arguments']]
                 RHS = 'DoubleVector(); ' + ' '.join(pushes)
-                
+
             l = ' '.join([LHS, '=', RHS])
         else:
             l = '??????????????????????????????'
-            
+
         if 'EOL' in d and d['EOL']:
             l += ';'
         return l
 
     def header(self):
         return '\n'.join(['CoolProp\n'])
-        
-        
+
+
 class R(BaseParser):
 
-    function_name_mapping = dict(factory = 'AbstractState_factory')
+    function_name_mapping = dict(factory='AbstractState_factory')
     type_name_mapping = {'vector': None,
                          'AbstractState': None}
     enum_name_mapping = {'input_pairs': "CoolProp", 'parameters': "CoolProp"}
-    indentation = ' '*0
+    indentation = ' ' * 0
 
     def parse_arguments(self, arguments):
         out = []
         for arg in arguments:
-            if isinstance(arg, string_types) and arg[0] == "'" and arg[-1] == "'":
+            if isinstance(arg, str) and arg[0] == "'" and arg[-1] == "'":
                 out.append('\'' + arg[1:-1] + '\'')
             elif isinstance(arg, dict):
                 out.append(self.dict2string(arg))
@@ -753,7 +769,7 @@ class R(BaseParser):
         if d['type'] == 'comment':
             l = '# ' + d['comment']
         elif d['type'] == 'function':
-            l = self.map_function(d['function'])  + '(' + ', '.join(self.parse_arguments(d['arguments'])) + ')'
+            l = self.map_function(d['function']) + '(' + ', '.join(self.parse_arguments(d['arguments'])) + ')'
         elif d['type'] == 'print':
             args = self.parse_arguments(d['arguments'])
             l = 'writeLines(paste(' + ', \' \', '.join(args) + '))'
@@ -763,39 +779,40 @@ class R(BaseParser):
         elif d['type'] == 'class_dereference':
             l = d['name'] + '$' + self.dict2string(d['RHS'])
         elif d['type'] == 'enum':
-            l = '"' +  d['key'] + '"'
+            l = '"' + d['key'] + '"'
         elif d['type'] == 'custom_assignment':
             type_name = self.type_name_mapping[d['variable_type']]
             if type_name:
                 LHS = type_name + ' ' + d['variable_name']
             else:
                 LHS = d['variable_name']
-            
+
             if d['RHS']['type'] != 'vector':
                 RHS = self.dict2string(d['RHS'])
-            else: # Custom processing for vector assignment
-                pushes = [d['variable_name']+' <- ' + arg +';' for arg in d['RHS']['arguments']]
+            else:  # Custom processing for vector assignment
+                pushes = [d['variable_name'] + ' <- ' + arg + ';' for arg in d['RHS']['arguments']]
                 RHS = 'c(' + ', '.join([arg for arg in d['RHS']['arguments']]) + ')'
-                
+
             l = ' '.join([LHS, '=', RHS])
         else:
             l = '??????????????????????????????'
-            
+
         if 'EOL' in d and d['EOL']:
             l += ''
         return l
 
     def header(self):
-        return 'dyn.load(paste("CoolProp", .Platform$dynlib.ext, sep=""))\nsource("CoolProp.R")\ncacheMetaData(1)\n'
+        return 'dyn.load(paste("CoolPropR", .Platform$dynlib.ext, sep=""))\nlibrary(methods) # See http://stackoverflow.com/a/19468533\nsource("CoolProp.R")\ncacheMetaData(1)\n'
+
 
 class MATLAB(BaseParser):
 
-    function_name_mapping = dict(Props1SI = 'CoolProp.Props1SI',
-                                 PropsSI = 'CoolProp.PropsSI',
-                                 PhaseSI = 'CoolProp.PhaseSI',
-                                 HAPropsSI = 'CoolProp.HAPropsSI',
-                                 get_global_param_string = 'CoolProp.get_global_param_string',
-                                 factory = 'CoolProp.AbstractState.factory')
+    function_name_mapping = dict(Props1SI='CoolProp.Props1SI',
+                                 PropsSI='CoolProp.PropsSI',
+                                 PhaseSI='CoolProp.PhaseSI',
+                                 HAPropsSI='CoolProp.HAPropsSI',
+                                 get_global_param_string='CoolProp.get_global_param_string',
+                                 factory='CoolProp.AbstractState.factory')
     enum_name_mapping = {'input_pairs': "CoolProp", 'parameters': "CoolProp"}
     type_name_mapping = {'vector': None,
                          'AbstractState': None}
@@ -804,7 +821,7 @@ class MATLAB(BaseParser):
     def parse_arguments(self, arguments):
         out = []
         for arg in arguments:
-            if isinstance(arg, string_types) and arg[0] == "'" and arg[-1] == "'":
+            if isinstance(arg, str) and arg[0] == "'" and arg[-1] == "'":
                 out.append('\'' + arg[1:-1] + '\'')
             elif isinstance(arg, dict):
                 out.append(self.dict2string(arg))
@@ -816,7 +833,7 @@ class MATLAB(BaseParser):
         if d['type'] == 'comment':
             l = '% ' + d['comment']
         elif d['type'] == 'function':
-            l = self.map_function(d['function'])  + '(' + ', '.join(self.parse_arguments(d['arguments'])) + ')'
+            l = self.map_function(d['function']) + '(' + ', '.join(self.parse_arguments(d['arguments'])) + ')'
         elif d['type'] == 'print':
             args = self.parse_arguments(d['arguments'])
             args = ['num2str(' + arg + ')' for arg in args]
@@ -837,14 +854,14 @@ class MATLAB(BaseParser):
             # Custom processing for vector assignment
             if d['RHS']['type'] != 'vector':
                 RHS = self.dict2string(d['RHS'])
-            else: #vector
-                pushes = [d['variable_name']+'.push_back(' + arg +');' for arg in d['RHS']['arguments']]
+            else:  # vector
+                pushes = [d['variable_name'] + '.push_back(' + arg + ');' for arg in d['RHS']['arguments']]
                 RHS = 'CoolProp.DoubleVector(); ' + ' '.join(pushes)
-                
+
             l = ' '.join([LHS, '=', RHS])
         else:
             l = '??????????????????????????????'
-            
+
         if 'EOL' in d and d['EOL']:
             l += ';'
         return l
@@ -852,23 +869,24 @@ class MATLAB(BaseParser):
     def header(self):
         return ''
 
+
 class Java(BaseParser):
 
-    function_name_mapping = dict(Props1SI = 'CoolProp.Props1SI',
-                                 PropsSI = 'CoolProp.PropsSI',
-                                 PhaseSI = 'CoolProp.PhaseSI',
-                                 HAPropsSI = 'CoolProp.HAPropsSI',
-                                 get_global_param_string = 'CoolProp.get_global_param_string',
-                                 factory = 'AbstractState.factory')
+    function_name_mapping = dict(Props1SI='CoolProp.Props1SI',
+                                 PropsSI='CoolProp.PropsSI',
+                                 PhaseSI='CoolProp.PhaseSI',
+                                 HAPropsSI='CoolProp.HAPropsSI',
+                                 get_global_param_string='CoolProp.get_global_param_string',
+                                 factory='AbstractState.factory')
     type_name_mapping = {'vector': 'DoubleVector',
-                         'AbstractState': 'AbstractState'}   
+                         'AbstractState': 'AbstractState'}
     enum_name_mapping = {'input_pairs': "input_pairs", 'parameters': "parameters"}
-    indentation = ' '*8
+    indentation = ' ' * 8
 
     def parse_arguments(self, arguments):
         out = []
         for arg in arguments:
-            if isinstance(arg, string_types) and arg[0] == "'" and arg[-1] == "'":
+            if isinstance(arg, str) and arg[0] == "'" and arg[-1] == "'":
                 out.append('\"' + arg[1:-1] + '\"')
             elif isinstance(arg, dict):
                 out.append(self.dict2string(arg))
@@ -895,13 +913,13 @@ class Java(BaseParser):
                 LHS = type_name + ' ' + d['variable_name']
             else:
                 LHS = d['variable_name']
-            
+
             if d['RHS']['type'] != 'vector':
                 RHS = self.dict2string(d['RHS'])
-            else: # Custom processing for vector assignment
-                pushes = [d['variable_name']+'.add(' + arg +');' for arg in d['RHS']['arguments']]
+            else:  # Custom processing for vector assignment
+                pushes = [d['variable_name'] + '.add(' + arg + ');' for arg in d['RHS']['arguments']]
                 RHS = 'new DoubleVector(); ' + ' '.join(pushes)
-                
+
             l = ' '.join([LHS, '=', RHS])
         else:
             raise ValueError
@@ -912,28 +930,29 @@ class Java(BaseParser):
         return l
 
     def header(self):
-        return 'public class Example {\n    static {\n        System.loadLibrary("CoolProp");\n    }\n\n    public static void main(String argv[]){\n'
+        return 'import org.coolprop.*;\n\npublic class Example {\n    static {\n        System.loadLibrary("CoolPropJava");\n    }\n\n    public static void main(String argv[]){\n'
 
     def footer(self):
         return '\n    }\n}'
 
+
 class Csharp(BaseParser):
 
-    function_name_mapping = dict(Props1SI = 'CoolProp.Props1SI',
-                                 PropsSI = 'CoolProp.PropsSI',
-                                 PhaseSI = 'CoolProp.PhaseSI',
-                                 HAPropsSI = 'CoolProp.HAPropsSI',
-                                 get_global_param_string = 'CoolProp.get_global_param_string',
-                                 factory = 'AbstractState.factory')
+    function_name_mapping = dict(Props1SI='CoolProp.Props1SI',
+                                 PropsSI='CoolProp.PropsSI',
+                                 PhaseSI='CoolProp.PhaseSI',
+                                 HAPropsSI='CoolProp.HAPropsSI',
+                                 get_global_param_string='CoolProp.get_global_param_string',
+                                 factory='AbstractState.factory')
     type_name_mapping = {'vector': "DoubleVector",
-                         'AbstractState': 'AbstractState'} 
+                         'AbstractState': 'AbstractState'}
     enum_name_mapping = {'input_pairs': "input_pairs", 'parameters': "parameters"}
-    indentation = ' '*12
+    indentation = ' ' * 12
 
     def parse_arguments(self, arguments):
         out = []
         for arg in arguments:
-            if isinstance(arg, string_types) and arg[0] == "'" and arg[-1] == "'":
+            if isinstance(arg, str) and arg[0] == "'" and arg[-1] == "'":
                 out.append('\"' + arg[1:-1] + '\"')
             elif isinstance(arg, dict):
                 out.append(self.dict2string(arg))
@@ -974,10 +993,10 @@ class Csharp(BaseParser):
 
     def footer(self):
         return '\n        }\n    }\n}'
-        
-        
-if __name__=='__main__':
-    
+
+
+if __name__ == '__main__':
+
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("language", help="The target language (Python, Java, Csharp, etc.)")
@@ -985,4 +1004,4 @@ if __name__=='__main__':
     args = parser.parse_args()
     writer = locals()[args.language]()
     writer.write(args.destination, writer.parse())
-    print('written to', args.destination)
+    print("written to %s" % args.destination)

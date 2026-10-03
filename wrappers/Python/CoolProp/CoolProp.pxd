@@ -1,20 +1,19 @@
-from libcpp.string cimport string
 import cython
 cimport cython
 
 from libcpp.vector cimport vector
 
-from typedefs cimport *
+from .typedefs cimport *
 
 include "AbstractState.pxd"
        
 cdef class State:
-    cdef AbstractState pAS
+    cdef public AbstractState pAS
     cdef readonly bytes Fluid, phase
     cdef int iFluid,iParam1,iParam2,iOutput
     cdef double T_, rho_, p_
     
-    cpdef set_Fluid(self, string Fluid, string backend)
+    cpdef set_Fluid(self, Fluid, backend)
     cpdef speed_test(self, int N)
     cpdef update(self, dict params)
     cpdef update_ph(self, double p, double h)

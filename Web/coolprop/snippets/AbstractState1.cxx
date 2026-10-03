@@ -1,12 +1,11 @@
-#include "CoolProp.h"
-#include "AbstractState.h"
+#include "CoolProp/CoolProp.h"
+#include "CoolProp/AbstractState.h"
 #include <iostream>
-#include "crossplatform_shared_ptr.h"
+#include <memory>
 using namespace CoolProp;
-int main()
-{
-    shared_ptr<AbstractState> Water(AbstractState::factory("HEOS","Water"));
-    Water->update(PQ_INPUTS, 101325, 0); // SI units
+int main() {
+    std::shared_ptr<AbstractState> Water(AbstractState::factory("HEOS", "Water"));
+    Water->update(PQ_INPUTS, 101325, 0);  // SI units
     std::cout << "T: " << Water->T() << " K" << std::endl;
     std::cout << "rho': " << Water->rhomass() << " kg/m^3" << std::endl;
     std::cout << "rho': " << Water->rhomolar() << " mol/m^3" << std::endl;

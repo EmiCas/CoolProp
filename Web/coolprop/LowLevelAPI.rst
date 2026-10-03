@@ -8,13 +8,13 @@ Low Level Interface
 
 For more advanced use, it can be useful to have access to lower-level internals of the CoolProp code.  For simpler use, you can use the :ref:`high-level interface <high_level_api>`.  The primary reason why this low-level interface is useful is because it is much faster, and actually the high-level interface internally calls the low-level interface.  Furthermore, the low-level-interface exclusively operates using enumerated values (integers) and floating point numbers, and uses no strings.  String comparison and parsing is computationally expensive and the low-level interface allows for a very efficient execution.
 
-At the C++ level, the code is based on the use of an :cpapi:`AbstractState` `abstract base class  <http://en.wikipedia.org/wiki/Abstract_type>`_ which defines a protocol that :ref:`the property backends <backends>` must implement.  In this way, it is very easy to extend CoolProp to connect with another completely unrelated property library, as was done for REFPROP.  As long as the interface to the library can be coerced to work within the AbstractState structure, CoolProp can interface seamlessly with the library.
+At the C++ level, the code is based on the use of an :cpapi:`AbstractState` `abstract base class  <https://en.wikipedia.org/wiki/Abstract_type>`_ which defines a protocol that :ref:`the property backends <backends>` must implement.  In this way, it is very easy to extend CoolProp to connect with another completely unrelated property library, as was done for REFPROP.  As long as the interface to the library can be coerced to work within the AbstractState structure, CoolProp can interface seamlessly with the library.
 
 In order to make most effective use of the low-level interface, you should instantiate one instance of the backend for each fluid (or mixture), and then call methods within the instance.  There is a certain amount of computational overhead in calling the constructor for the backend instance, so in order to minimize it, only call the constructor once, and pass around your class instance.
 
 .. warning::
 
-    While the warning about the computational overhead when generating AbstractState instances is more a recommendation, it is *required* that you allocate as few AbstractState instances as possible when using the :ref:`tabular backends (TTSE & Bicubic) <tabular_interpolation>`.
+    While the warning about the computational overhead when generating AbstractState instances is more a recommendation, it is *required* that you allocate as few AbstractState instances as possible when using the :ref:`tabular backends (TTSE & Bicubic) <tabular_interpolation>` and the :doc:`SVD-compressed tabular backend (SVDSBTL) </coolprop/SVDSBTL>` (~80-140 ms table-load per construction). For SVDSBTL, a process-wide :ref:`in-memory cache <SVDSBTL-memcache>` makes a second construction for the same fluid/options in the same process much cheaper, but this is a mitigation for repeated constructions, not a substitute for reusing an instance — TTSE/Bicubic have no such cache, and a fresh process always pays the full load cost.
 
 .. warning::
 
@@ -57,7 +57,7 @@ A simple example of this would be
     
     In [0]: CoolProp.DmolarT_INPUTS
 
-Keyed output versus acccessor functions
+Keyed output versus accessor functions
 ---------------------------------------
 
 The simple output functions like :cpapi:`AbstractState::rhomolar` that are mapped to keys in :cpapi:`CoolProp::parameters` can be either obtained using the accessor function or by calling :cpapi:`AbstractState::keyed_output`.  The advantage of the ``keyed_output`` function is that you could in principle iterate over several keys, rather than having to hard-code calls to several accessor functions.  For instance:
@@ -96,7 +96,7 @@ You might reasonably ask at this point why we would want to use the low-level in
     In [0]: %timeit HEOS.update(CoolProp.DmolarT_INPUTS, 1e-6, 300)
     
     # Reset the specification of phase
-    In [0]: HEOS.specify_phase(CoolProp.iphase_unknown)
+    In [0]: HEOS.specify_phase(CoolProp.iphase_not_imposed)
     
     # A mixture of methane and ethane
     In [0]: HEOS = CoolProp.AbstractState("HEOS", "Methane&Ethane")
@@ -119,6 +119,171 @@ You might reasonably ask at this point why we would want to use the low-level in
     # Vapor phase mole fractions - 
     # Should be the bulk composition back since we are doing a dewpoint calculation
     In [0]: HEOS.mole_fractions_vapor()
+
+Imposing the Phase (Optional)
+-----------------------------
+
+Each call to ``update()`` requires the phase to be determined based on the provided input pair, and may require a non-trivial flash calculation to determine if the state point is in the single-phase or two-phase region. For computational efficiency, CoolProp provide a facility to manually impose the phase before updating the state point. As demonstrated above, specifying the phase of a state point can result in a speed-up of ~10%, depending on the input pair provided and the phase region specified. If unspecified, CoolProp will determine the phase.  
+
+Depending on the input pair, there may or may not be a speed benefit to imposing a phase, like the one demonstrated above for **DmolarT_INPUTS**.  If, for a given input pair, there is little or no speed benefit, or if the flash calculation has to be performed anyway to determine saturation values, the imposed phase may simply be ignored internally.
+
+To specify the phase to be used, the AbstractState provides the following function:
+
+.. ipython::
+
+    # Imposing the single-phase gas region
+    In [0]: HEOS.specify_phase(CoolProp.iphase_gas)
+
+The specified phase parameter can be one of the CoolProp constants in the table below. 
+
++---------------------------------+----------------------------------------------------+
+| Phase Constant                  | Phase Region                                       |
++=================================+====================================================+
+| iphase_liquid                   | p < pcrit & T < Tcrit ; above saturation           |
++---------------------------------+----------------------------------------------------+
+| iphase_gas                      | p < pcrit & T < Tcrit ; below saturation           |
++---------------------------------+----------------------------------------------------+
+| iphase_twophase                 | p < pcrit & T < Tcrit ; mixed liquid/gas           |
++---------------------------------+----------------------------------------------------+
+| iphase_supercritical_liquid     | p > pcrit & T < Tcrit                              |
++---------------------------------+----------------------------------------------------+
+| iphase_supercritical_gas        | p < pcrit & T > Tcrit                              |
++---------------------------------+----------------------------------------------------+
+| iphase_supercritical            | p > pcrit & T > Tcrit                              |
++---------------------------------+----------------------------------------------------+
+| iphase_not_imposed              | (Default) CoolProp to determine phase              |
++---------------------------------+----------------------------------------------------+
+
+To remove an imposed phase and allow CoolProp to determine the phase again, one of the following calls can be made.
+    
+.. ipython::
+
+    # Reset the specification of phase
+    In [0]: HEOS.specify_phase(CoolProp.iphase_not_imposed)
+
+    # Or, more simply
+    In [0]: HEOS.unspecify_phase()
+
+Phase specification in the low-level interface should be performed right before the call to ``update()``.
+
+.. warning::
+
+   When specifying an imposed phase, it is absolutely **critical** that the input pair actually lie within the imposed phase region.  If an incorrect phase is imposed for the given input pair, ``update()`` may throw unexpected errors or incorrect results may possibly be returned from the property functions.  If the state point phase is not absolutely known, it is best to let CoolProp determine the phase at the cost of some computational efficiency.
+
+.. _disambiguating_saturation_roots:
+
+Disambiguating Multiple Saturation Roots
+----------------------------------------
+
+A handful of saturation-flash inputs admit *more than one* temperature solution
+for the same input value. The default flash silently returns one of them, but
+which one is implementation-defined and depends on the bracketing solver's
+state. The cases that arise in practice (see GitHub
+`#2773 <https://github.com/CoolProp/CoolProp/issues/2773>`_):
+
+* ``HmolarQ_INPUTS`` / ``HmassQ_INPUTS`` on the **vapor side** (``Q = 1``).
+  :math:`h_{g}(T)` peaks well below the critical temperature for many fluids
+  (≈ 540 K for water), so a wide band of enthalpy values is reached at *two*
+  saturation temperatures.
+* ``QSmolar_INPUTS`` / ``QSmass_INPUTS`` on the vapor side. Same shape as
+  enthalpy for some fluids.
+* ``DmolarQ_INPUTS`` / ``DmassQ_INPUTS`` on the **liquid side** (``Q = 0``)
+  for water and heavy water (D2O). :math:`\rho_L(T)` has a maximum near 4 °C
+  (water) and 11 °C (D2O), so densities slightly below the peak occur at two
+  saturation temperatures.
+
+To select between the roots, use ``update_with_guesses`` and supply a
+temperature hint via :cpapi:`CoolProp::GuessesStructure`. Internally the flash
+uses the Chebyshev *superancillary* representation of the saturation curve,
+which is partitioned at construction into provably-monotonic temperature
+sub-intervals. ``guess.T`` selects the sub-interval whose temperature range
+contains it, and TOMS748 finds the unique root inside that sub-interval:
+
+.. ipython::
+
+    In [1]: import CoolProp.CoolProp as CP
+
+    In [2]: HEOS = CP.AbstractState("HEOS", "Water")
+
+    # h_g(T) on water saturated vapor has a maximum near 540 K. h_target =
+    # h_g(470 K) is also reached at some T > 540 K on the falling side.
+    In [3]: HEOS.update(CP.QT_INPUTS, 1.0, 470.0)
+
+    In [4]: h_target = HEOS.hmolar()
+
+    # Guess near the low-T root → returns ~470 K
+    In [5]: g = CP.PyGuessesStructure(); g.T = 470.0
+
+    In [6]: HEOS.update_with_guesses(CP.HmolarQ_INPUTS, h_target, 1.0, g)
+
+    In [7]: HEOS.T()
+
+    # Guess past the peak → returns the *other* root
+    In [8]: g.T = 620.0
+
+    In [9]: HEOS.update_with_guesses(CP.HmolarQ_INPUTS, h_target, 1.0, g)
+
+    In [10]: HEOS.T()
+
+The same pattern works for ``DmolarQ_INPUTS`` to disambiguate water's
+saturated-liquid density maximum near 4 °C, and for ``QSmolar_INPUTS``:
+
+.. ipython::
+
+    # Water saturated-liquid density max around T ≈ 277.13 K (4 °C).
+    # Pick a target ρ between ρ(near triple) and ρ(near peak) so two roots exist.
+    In [11]: HEOS.update(CP.QT_INPUTS, 0.0, 277.0)
+
+    In [12]: rho_near_peak = HEOS.rhomolar()
+
+    In [13]: HEOS.update(CP.QT_INPUTS, 0.0, 273.5)
+
+    In [14]: rho_near_triple = HEOS.rhomolar()
+
+    In [15]: rho_target = 0.5*(rho_near_peak + rho_near_triple)
+
+    # Guess on the rising branch → root below the peak
+    In [16]: g.T = 274.0; HEOS.update_with_guesses(CP.DmolarQ_INPUTS, rho_target, 0.0, g)
+
+    In [17]: HEOS.T()
+
+    # Guess on the falling branch → root above the peak
+    In [18]: g.T = 282.0; HEOS.update_with_guesses(CP.DmolarQ_INPUTS, rho_target, 0.0, g)
+
+    In [19]: HEOS.T()
+
+A few notes:
+
+* This requires a fluid with a Chebyshev superancillary present (true for
+  every pure fluid in the standard CoolProp build). The :math:`h_{sat}(T)`
+  and :math:`s_{sat}(T)` Chebyshev expansions are constructed lazily on
+  first use by sampling the EOS at the rho-superancillary's nodes and
+  capture the active reference state at construction.
+* Only ``guess.T`` is consulted by the branch-selection logic; other fields
+  in :cpapi:`CoolProp::GuessesStructure` are ignored for these input pairs.
+* Only pure (and not pseudo-pure) fluids are supported on this code path.
+  Mixtures and pseudo-pure fluids raise :cpapi:`CoolProp::NotImplementedError`.
+* Per-call cost after the first lazy build is on the order of a microsecond:
+  candidate-root enumeration is a piecewise-Chebyshev TOMS748 rootfind
+  inside each monotonic sub-interval.
+* The first call on a fluid lazily builds the caloric superancillary, which
+  costs ~10–50 ms. This is amortized across all subsequent calls. To
+  pre-build, you can call ``HEOS.update_with_guesses(...)`` once at startup,
+  or rely on the lazy path. The build is repeated when
+  :cpapi:`CoolProp::set_reference_state` is called for the fluid, so the
+  cached coefficients always match the active reference state.
+
+If you call plain ``update`` (without guesses) and the input lies in a
+multi-root region, CoolProp now raises ``CoolProp::MultipleSolutionsError``
+instead of silently picking one. The error message lists the candidate
+temperatures and points you at ``update_with_guesses``. Single-root inputs
+continue to work via ``update`` as before.
+
+To probe whether a particular ``(value, Q)`` is multi-rooted without
+provoking the exception, call ``update_with_guesses`` twice with two
+well-separated ``guess.T`` values that bracket the suspected extremum and
+compare the returned ``T``: if they differ substantially you have multiple
+roots; if they agree to many digits the solution is unique.
 
 .. _partial_derivatives_low_level:
 
@@ -149,8 +314,10 @@ For more information, see the docs: :cpapi:`CoolProp::AbstractState::first_parti
     In [4]: HEOS.first_partial_deriv(CoolProp.iSmass, CoolProp.iT, CoolProp.iDmass)
 
     # In the same way you can do second partial derivatives
-    # This is the second mixed partial of entropy with respect to density and temperature
-    In [4]: HEOS.second_partial_deriv(CoolProp.iSmass, CoolProp.iT, CoolProp.iDmass, CoolProp.iT, CoolProp.iDmass)
+    # This is the second mixed partial derivative of entropy with respect to density and temperature
+    In [4]: HEOS.second_partial_deriv(CoolProp.iSmass, CoolProp.iT, CoolProp.iDmass, CoolProp.iDmass, CoolProp.iT)
+    # This is the second partial derivative of entropy with respect to density at constant temperature
+    In [4]: HEOS.second_partial_deriv(CoolProp.iSmass,CoolProp.iDmass,CoolProp.iT,CoolProp.iDmass,CoolProp.iT)
     
 Two-Phase and Saturation Derivatives
 ------------------------------------
@@ -182,7 +349,36 @@ The two-phase derivatives of Thorade :cite:`Thorade-EES-2013` are implemented in
     
     # The d(Dmass)/d(Hmass)|P two-phase derivative using splines
     In [0]: HEOS.first_two_phase_deriv_splined(CoolProp.iDmass, CoolProp.iHmass, CoolProp.iP, 0.3)
-    
+
+    # The d(Q)/d(Hmolar)|P two-phase derivative of vapor quality
+    In [0]: HEOS.first_two_phase_deriv(CoolProp.iQ, CoolProp.iHmolar, CoolProp.iP)
+
+    # The d(Q)/d(P)|Hmolar two-phase derivative of vapor quality
+    In [0]: HEOS.first_two_phase_deriv(CoolProp.iQ, CoolProp.iP, CoolProp.iHmolar)
+
+The vapor-quality derivatives ``d(Q)/d(Hmolar)|P`` and ``d(Q)/d(P)|Hmolar`` (and their mass-based
+counterparts ``iQmass`` with ``iHmass``) follow directly from the lever rule
+:math:`Q = (h - h')/(h'' - h')`, giving :math:`(\partial Q/\partial h)_p = 1/(h'' - h')` and
+:math:`(\partial Q/\partial p)_h = -[(1-Q)\,\mathrm{d}h'/\mathrm{d}p + Q\,\mathrm{d}h''/\mathrm{d}p]/(h'' - h')`,
+where :math:`h'` and :math:`h''` are the saturated-liquid and saturated-vapor enthalpies.  Pair the
+molar quality ``iQ`` with molar enthalpy ``iHmolar`` and the mass quality ``iQmass`` with mass
+enthalpy ``iHmass``; for a pure fluid the two qualities are numerically equal.  As with
+the other two-phase derivatives, these are only defined inside the two-phase dome and are available
+through the low-level :cpapi:`CoolProp::AbstractState::first_two_phase_deriv` interface, not through
+the high-level ``PropsSI`` derivative strings.
+
+These two derivatives are restricted to **pure fluids** and raise ``NotImplementedError`` otherwise,
+because they require :math:`h'` and :math:`h''` to be functions of pressure alone.  Mixtures have
+quality-dependent phase compositions (temperature glide), and pseudo-pure fluids place the bubble and
+dew curves at different pressures for the same temperature, so in neither case does the lever rule
+above hold.  (For a pseudo-pure fluid in the ``REFPROP`` backend the rejection is detected from the
+bubble/dew pressure difference, which vanishes at the critical point; within roughly :math:`10^{-9}`
+in reduced temperature of :math:`T_c` such a fluid is not rejected.)  They also diverge at the critical point, where :math:`h'' - h'` vanishes; that case
+raises ``ValueError`` rather than returning a non-finite value.  (These are the C++ exception types;
+the Python wrapper surfaces all of them as ``ValueError``.)  Note too that the tabular backends
+(``BICUBIC``, ``TTSE``) do not implement these two derivatives — request them from ``HEOS`` or
+``REFPROP``.
+
 An example of plotting these derivatives is here:
 
 .. plot::
@@ -260,7 +456,7 @@ Here is an example showing how to change the reference state and demonstrating t
     
     # Note how the AS1 has its default value (change in reference state is not seen)
     # and AS2 does see the new reference state
-    In [1]: print AS1.hmass(), AS2.hmass()
+    In [1]: print('{0}, {1}'.format(AS1.hmass(), AS2.hmass()))
     
     # Back to the original value
     In [1]: CoolProp.CoolProp.set_reference_state('n-Propane','DEF')
@@ -268,13 +464,13 @@ Here is an example showing how to change the reference state and demonstrating t
 Low-level interface using REFPROP
 ---------------------------------
 
-If you have the `REFPROP library <http://www.nist.gov/srd/nist23.cfm>`_ installed, you can call REFPROP in the same way that you call CoolProp, but with ``REFPROP`` as the backend instead of ``HEOS``. For instance, as in python:
+If you have the `REFPROP library <https://www.nist.gov/srd/nist23.cfm>`_ installed, you can call REFPROP in the same way that you call CoolProp, but with ``REFPROP`` as the backend instead of ``HEOS``. For instance, as in python:
 
 .. ipython::
 
     In [0]: import CoolProp
 
-    In [0]: REFPROP = CoolProp.AbstractState("REFPROP", "Water")
+    In [0]: REFPROP = CoolProp.AbstractState("REFPROP", "WATER")
     
     In [0]: REFPROP.update(CoolProp.DmolarT_INPUTS, 1e-6, 300)
     

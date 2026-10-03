@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import os
-import cPickle
+import pickle
 from ConfigParser import ConfigParser
+
+import numpy as np
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from pylab import Figure
-from scipy import arange, arctan, pi
 
 from CoolProp.HumidAirProp import HAProps, HAProps_Aux
 
@@ -19,6 +20,7 @@ config_path = os.path.join(os.path.dirname(__file__), "psyrc")
 Preferences.read(config_path)
 P = Preferences.getfloat("General", "P")
 
+
 def _Pbar(Z):
     """
     ASHRAE Fundamentals Handbook pag 1.1 eq. 3
@@ -27,7 +29,7 @@ def _Pbar(Z):
     return
         standard atmosphere barometric pressure, Pa
     """
-    return 101325.*(1-2.25577e-5*Z)**5.256
+    return 101325. * (1 - 2.25577e-5 * Z)**5.256
 
 
 class PsychroPlot(FigureCanvasQTAgg):
@@ -36,6 +38,7 @@ class PsychroPlot(FigureCanvasQTAgg):
         Add custom margins
         Define a pointer to text state properties, to remove and redraw
     """
+
     def __init__(self, parent=None, width=15, height=5, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         FigureCanvasQTAgg.__init__(self, self.fig)
@@ -56,8 +59,8 @@ class PsychroPlot(FigureCanvasQTAgg):
         self.axes2D.yaxis.set_ticks_position("right")
         self.axes2D.yaxis.set_label_position("right")
 
-        tmin = Preferences.getfloat("Psychr", "isotdbStart")-273.15
-        tmax = Preferences.getfloat("Psychr", "isotdbEnd")-273.15
+        tmin = Preferences.getfloat("Psychr", "isotdbStart") - 273.15
+        tmax = Preferences.getfloat("Psychr", "isotdbEnd") - 273.15
 
         self.axes2D.set_xlim(tmin, tmax)
         self.axes2D.set_ylim(0, 0.04)
@@ -112,7 +115,7 @@ class PsyCoolprop(object):
               "P": 0.0,
 
               "tdb": 0.0,
-              "tdb": 0.0,
+              "tdp": 0.0,
               "twb": 0.0,
               "w": None,
               "HR": None,
@@ -159,21 +162,21 @@ class PsyCoolprop(object):
 
     def calculo(self):
         tdp, tdb, twb, P, Pvs, Pv, ws, w, HR, v, h = self._lib()
-        self.tdp = tdp-273.15
-        self.tdb = tdb-273.15
-        self.twb = twb-273.15
+        self.tdp = tdp - 273.15
+        self.tdb = tdb - 273.15
+        self.twb = twb - 273.15
         self.P = P
         self.Pvs = Pvs
         self.Pv = Pv
         self.ws = ws
         self.w = w
         self.HR = HR
-        self.mu = w/ws*100
+        self.mu = w / ws * 100
         self.v = v
-        self.rho = 1/v
+        self.rho = 1 / v
         self.h = h
-        self.Xa = 1/(1+self.w/0.62198)
-        self.Xw = 1-self.Xa
+        self.Xa = 1 / (1 + self.w / 0.62198)
+        self.Xw = 1 - self.Xa
 
     def args(self):
         # Correct coolprop custom namespace versus pychemqt namespace
@@ -215,7 +218,7 @@ class PsyCoolprop(object):
     def _P_kPa(self):
         """Property for ease access to pressure in kPa"""
         P = self._P()
-        return P/1000.
+        return P / 1000.
 
     def _lib(self):
         args = self.args()
@@ -228,9 +231,9 @@ class PsyCoolprop(object):
         tdp = HAProps("Tdp", *args)
         twb = HAProps("Twb", *args)
         w = HAProps("W", *args)
-        HR = HAProps("RH", *args)*100
-        Pvs = HAProps_Aux("p_ws", tdb, self._P_kPa, w)[0]*1000
-        Pv = Pvs*HR/100
+        HR = HAProps("RH", *args) * 100
+        Pvs = HAProps_Aux("p_ws", tdb, self._P_kPa, w)[0] * 1000
+        Pv = Pvs * HR / 100
         ws = HAProps("W", "P", self._P_kPa, "Tdb", tdb, "RH", 1)
         v = HAProps("V", *args)
         h = HAProps("H", *args)
@@ -239,18 +242,18 @@ class PsyCoolprop(object):
 
     @classmethod
     def calculatePlot(cls, parent):
-        """Funtion to calculate points in chart"""
+        """Function to calculate points in chart"""
 
         data = {}
         P = Preferences.getfloat("General", "P")
-        P_kPa = P/1000
+        P_kPa = P / 1000
         t = cls.LineList("isotdb", Preferences)
 
         # Saturation line
         Hs = []
         for tdb in t:
             Hs.append(HAProps("W", "P", P_kPa, "Tdb", tdb, "RH", 1))
-            parent.progressBar.setValue(5*len(Hs)/len(t))
+            parent.progressBar.setValue(5 * len(Hs) / len(t))
         data["t"] = t
         data["Hs"] = Hs
 
@@ -260,10 +263,10 @@ class PsyCoolprop(object):
         for w in H:
             if w:
                 tdp = HAProps("Tdp", "P", 101.325, "W", w, "RH", 1)
-                th.append(tdp-273.15)
+                th.append(tdp - 273.15)
             else:
                 tmin = Preferences.getfloat("Psychr", "isotdbStart")
-                th.append(tmin-273.15)
+                th.append(tmin - 273.15)
         data["H"] = H
         data["th"] = th
 
@@ -274,9 +277,9 @@ class PsyCoolprop(object):
         for i in hr:
             Hr[i] = []
             for tdb in t:
-                Hr[i].append(HAProps("W", "P", P_kPa, "Tdb", tdb, "RH", i/100.))
+                Hr[i].append(HAProps("W", "P", P_kPa, "Tdb", tdb, "RH", i / 100.))
                 cont += 1
-                parent.progressBar.setValue(5+10*cont/len(hr)/len(Hs))
+                parent.progressBar.setValue(5 + 10 * cont / len(hr) / len(Hs))
         data["Hr"] = Hr
 
         # Twb
@@ -286,23 +289,23 @@ class PsyCoolprop(object):
         for T in lines:
             ws = HAProps("W", "P", P_kPa, "RH", 1, "Tdb", T)
             H = [ws, 0]
-            Tw = [T-273.15, HAProps("Tdb", "P", P_kPa, "Twb", T, "RH", 0)-273.15]
+            Tw = [T - 273.15, HAProps("Tdb", "P", P_kPa, "Twb", T, "RH", 0) - 273.15]
             cont += 1
-            parent.progressBar.setValue(15+75*cont/len(lines))
+            parent.progressBar.setValue(15 + 75 * cont / len(lines))
             Twb[T] = (H, Tw)
         data["Twb"] = Twb
 
         # v
         lines = cls.LineList("isochor", Preferences)
         V = {}
-        rh = arange(1, -0.05, -0.05)
+        rh = np.arange(1, -0.05, -0.05)
         for cont, v in enumerate(lines):
             w = []
             Td = []
             for r in rh:
                 w.append(HAProps("W", "P", P_kPa, "RH", r, "V", v))
-                Td.append(HAProps("Tdb", "P", P_kPa, "RH", r, "V", v)-273.15)
-            parent.progressBar.setValue(90+10*cont/len(lines))
+                Td.append(HAProps("Tdb", "P", P_kPa, "RH", r, "V", v) - 273.15)
+            parent.progressBar.setValue(90 + 10 * cont / len(lines))
             V[v] = (Td, w)
         data["v"] = V
 
@@ -311,21 +314,22 @@ class PsyCoolprop(object):
     @staticmethod
     def LineList(name, Preferences):
         """Return a list with the values of isoline name to plot"""
-        if Preferences.getboolean("Psychr", name+"Custom"):
+        if Preferences.getboolean("Psychr", name + "Custom"):
             t = []
-            for i in Preferences.get("Psychr", name+'List').split(','):
+            for i in Preferences.get("Psychr", name + 'List').split(','):
                 if i:
                     t.append(float(i))
         else:
-            start = Preferences.getfloat("Psychr", name+"Start")
-            end = Preferences.getfloat("Psychr", name+"End")
-            step = Preferences.getfloat("Psychr", name+"Step")
-            t = arange(start, end, step)
+            start = Preferences.getfloat("Psychr", name + "Start")
+            end = Preferences.getfloat("Psychr", name + "End")
+            step = Preferences.getfloat("Psychr", name + "Step")
+            t = np.arange(start, end, step)
         return t
 
 
 class UI_Psychrometry(QDialog):
     """Psychrometric charts tool"""
+
     def __init__(self, parent=None):
         super(UI_Psychrometry, self).__init__(parent)
         self.showMaximized()
@@ -357,7 +361,6 @@ class UI_Psychrometry(QDialog):
             "./", "Portable Network Graphics (*.png)"))
         self.diagrama2D.fig.savefig(fname, facecolor='#eeeeee')
 
-
     def drawlabel(self, name, Preferences, t, W, label, unit):
         """
         Draw annotation for isolines
@@ -368,24 +371,24 @@ class UI_Psychrometry(QDialog):
             label: text value to draw
             unit: text units to draw
         """
-        if Preferences.getboolean("Psychr", name+"label"):
-            tmin = Preferences.getfloat("Psychr", "isotdbStart")-273.15
-            tmax = Preferences.getfloat("Psychr", "isotdbEnd")-273.15
-            x = tmax-tmin
+        if Preferences.getboolean("Psychr", name + "label"):
+            tmin = Preferences.getfloat("Psychr", "isotdbStart") - 273.15
+            tmax = Preferences.getfloat("Psychr", "isotdbEnd") - 273.15
+            x = tmax - tmin
             wmin = Preferences.getfloat("Psychr", "isowStart")
             wmax = Preferences.getfloat("Psychr", "isowEnd")
-            y = wmax-wmin
+            y = wmax - wmin
 
             i = 0
             for ti, wi in zip(t, W):
                 if tmin <= ti <= tmax and wmin <= wi <= wmax:
                     i += 1
             label = str(label)
-            if Preferences.getboolean("Psychr", name+"units"):
+            if Preferences.getboolean("Psychr", name + "units"):
                 label += unit
-            pos = Preferences.getfloat("Psychr", name+"position")
-            p = int(i*pos/100-1)
-            rot = arctan((W[p]-W[p-1])/y/(t[p]-t[p-1])*x)*360/2/pi
+            pos = Preferences.getfloat("Psychr", name + "position")
+            p = int(i * pos / 100 - 1)
+            rot = np.arctan((W[p] - W[p - 1]) / y / (t[p] - t[p - 1]) * x) * 360.0 / 2.0 / np.pi
             self.diagrama2D.axes2D.annotate(label, (t[p], W[p]),
                 rotation=rot, size="small", ha="center", va="center")
 
@@ -399,7 +402,7 @@ class UI_Psychrometry(QDialog):
         filename = "%i.pkl" % P
         if os.path.isfile(filename):
             with open(filename, "r") as archivo:
-                data = cPickle.load(archivo)
+                data = pickle.load(archivo)
                 self.status.setText("Loading cached data...")
                 QApplication.processEvents()
         else:
@@ -407,14 +410,14 @@ class UI_Psychrometry(QDialog):
             self.status.setText("Calculating data, be patient...")
             QApplication.processEvents()
             data = PsyCoolprop.calculatePlot(self)
-            cPickle.dump(data, open(filename, "w"))
+            pickle.dump(data, open(filename, "w"))
             self.progressBar.setVisible(False)
         self.status.setText("Plotting...")
         QApplication.processEvents()
 
-        tmax = Preferences.getfloat("Psychr", "isotdbEnd")-273.15
+        tmax = Preferences.getfloat("Psychr", "isotdbEnd") - 273.15
 
-        t = [ti-273.15 for ti in data["t"]]
+        t = [ti - 273.15 for ti in data["t"]]
         Hs = data["Hs"]
         format = {}
         format["ls"] = Preferences.get("Psychr", "saturationlineStyle")
@@ -462,7 +465,7 @@ class UI_Psychrometry(QDialog):
         format["markersize"] = 3
         for T, (H, Tw) in data["Twb"].iteritems():
             self.diagrama2D.plot(Tw, H, **format)
-            value = T-273.15
+            value = T - 273.15
             txt = u"ºC"
             self.drawlabel("isotwb", Preferences, Tw, H, value, txt)
 
@@ -492,7 +495,7 @@ class UI_Psychrometry(QDialog):
 
     def createState(self, x, y):
         """Create psychrometric state from click or mouse position"""
-        tdb = x+273.15
+        tdb = x + 273.15
         punto = PsyCoolprop(P=P, tdb=tdb, w=y)
         return punto
 

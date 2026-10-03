@@ -5,81 +5,74 @@ the build to avoid double declaration of the main function and
 Catch clashing
 */
 #include "Tests.h"
-#include "time.h"
+#include <ctime>
+#include <iostream>
 
 #if defined ENABLE_CATCH
-    #define CATCH_CONFIG_RUNNER
-    #include "catch.hpp"
+#    include <catch2/catch_all.hpp>
 
-    static Catch::Session session; // There must be exactly one instance
+static Catch::Session session;  // There must be exactly one instance
 
-#endif // ENABLE_CATCH
+#endif  // ENABLE_CATCH
 
-int run_fast_tests()
-{
+int run_fast_tests() {
 #ifdef ENABLE_CATCH
-        Catch::ConfigData &config = session.configData();
-        config.testsOrTags.clear();
-        config.testsOrTags.push_back("[fast]");
-        session.useConfigData(config);
-        return session.run();
+    Catch::ConfigData& config = session.configData();
+    config.testsOrTags.clear();
+    config.testsOrTags.emplace_back("[fast]");
+    session.useConfigData(config);
+    return session.run();
 #else
-        return 0;
+    return 0;
 #endif
 }
 
-int run_not_slow_tests()
-{
-    #ifdef ENABLE_CATCH
-        Catch::ConfigData &config = session.configData();
-        config.testsOrTags.clear();
-        config.testsOrTags.push_back("~[slow]");
-        session.useConfigData(config);
+int run_not_slow_tests() {
+#ifdef ENABLE_CATCH
+    Catch::ConfigData& config = session.configData();
+    config.testsOrTags.clear();
+    config.testsOrTags.emplace_back("~[slow]");
+    session.useConfigData(config);
 
-        time_t t1, t2;
-        t1 = clock();
-        session.run();
-        t2 = clock();
-        printf("Elapsed time for not slow tests: %g s",(double)(t2-t1)/CLOCKS_PER_SEC);
+    time_t t1, t2;
+    t1 = clock();
+    session.run();
+    t2 = clock();
+    std::cout << "Elapsed time for not slow tests: " << ((double)(t2 - t1) / CLOCKS_PER_SEC) << " s";
 
-        return 1;
-    #else
-        return 0;
-    #endif
+    return 1;
+#else
+    return 0;
+#endif
 }
 
-int run_user_defined_tests(const std::vector<std::string> & tests_or_tags)
-{
-    #ifdef ENABLE_CATCH
-        Catch::ConfigData &config = session.configData();
-        config.testsOrTags.clear();
-        for (unsigned int i = 0; i < tests_or_tags.size(); i++)
-        {
-            config.testsOrTags.push_back(tests_or_tags[i]);
-        }
-        session.useConfigData(config);
+int run_user_defined_tests(const std::vector<std::string>& tests_or_tags) {
+#ifdef ENABLE_CATCH
+    Catch::ConfigData& config = session.configData();
+    config.testsOrTags.clear();
+    for (const auto& tests_or_tag : tests_or_tags) {
+        config.testsOrTags.push_back(tests_or_tag);
+    }
+    session.useConfigData(config);
 
-        time_t t1, t2;
-        t1 = clock();
-        session.run();
-        t2 = clock();
-        printf("Elapsed time for user defined tests: %g s",(double)(t2-t1)/CLOCKS_PER_SEC);
+    time_t t1, t2;
+    t1 = clock();
+    session.run();
+    t2 = clock();
+    std::cout << "Elapsed time for user defined tests: " << ((double)(t2 - t1) / CLOCKS_PER_SEC) << " s";
 
-        return 1;
-    #else
-        return 0;
-    #endif
+    return 1;
+#else
+    return 0;
+#endif
 }
 
-void run_tests()
-{
-    #ifdef ENABLE_CATCH
-        Catch::ConfigData &config = session.configData();
-        config.testsOrTags.clear();
-        //config.shouldDebugBreak = true;
-        session.useConfigData(config);
-        session.run();
-    #endif
+void run_tests() {
+#ifdef ENABLE_CATCH
+    Catch::ConfigData& config = session.configData();
+    config.testsOrTags.clear();
+    //config.shouldDebugBreak = true;
+    session.useConfigData(config);
+    session.run();
+#endif
 }
-
-
